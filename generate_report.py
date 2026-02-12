@@ -1192,51 +1192,196 @@ def generate_overall_stats(assignments, flags, provider_stats):
 </table>"""
 
 
-def update_index_html(reports_dir):
-    """Update the REPORT_FILES list in index.html to reflect current report files."""
+def generate_index_html(reports_dir, block_label):
+    """Generate or update the index.html for a block's report folder.
+    Scans the folder for longcall_report_*.html files and builds the listing."""
     import glob
-    import re
 
     index_path = os.path.join(reports_dir, "index.html")
-    if not os.path.exists(index_path):
-        return
 
-    # Find all report HTML files (exclude index.html)
+    # Find all report HTML files
     report_files = sorted(glob.glob(os.path.join(reports_dir, "longcall_report_*.html")))
     filenames = [os.path.basename(f) for f in report_files]
 
-    # Build the JS array string
-    js_array = "var REPORT_FILES = [\n"
-    for i, fn in enumerate(filenames):
-        comma = "," if i < len(filenames) - 1 else ""
-        js_array += f'  "{fn}"{comma}\n'
-    js_array += "];"
+    # Build the JS array
+    js_entries = ",\n".join(f'  "{fn}"' for fn in filenames)
 
-    # Read and replace in index.html
-    with open(index_path, 'r') as f:
-        html = f.read()
-
-    html = re.sub(
-        r'var REPORT_FILES = \[.*?\];',
-        js_array,
-        html,
-        flags=re.DOTALL
-    )
-
-    # Also update the password hash in case it changed
+    # Password hash
     pw = _load_report_password()
-    if pw:
-        new_hash = hashlib.sha256(pw.encode('utf-8')).hexdigest()
-        html = re.sub(
-            r'var HASH = "[a-f0-9]+";',
-            f'var HASH = "{new_hash}";',
-            html
-        )
+    pw_hash = hashlib.sha256(pw.encode('utf-8')).hexdigest() if pw else ""
+
+    # Password gate HTML (only if password is set)
+    if pw_hash:
+        pw_overlay = '''<div id="pw-overlay">
+  <div id="pw-box">
+    <h2>Password Required</h2>
+    <p>This site contains protected schedule information.</p>
+    <input type="password" id="pw-input" placeholder="Enter password" autocomplete="off">
+    <button id="pw-btn">Unlock</button>
+    <div id="pw-error">Incorrect password</div>
+  </div>
+</div>'''
+        content_class = ""
+    else:
+        pw_overlay = ""
+        content_class = "unlocked"
+
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Long Call Schedule Variations — {esc(block_label)}</title>
+<style>
+  :root {{
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --heading: #0d47a1;
+    --border: #d0d0d0;
+    --link: #1565c0;
+    --card-bg: #f5f7fa;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    padding: 24px;
+    max-width: 700px;
+    margin: 0 auto;
+  }}
+  h1 {{ font-size: 22px; color: var(--heading); margin-bottom: 4px; }}
+  .subtitle {{ color: #555; font-size: 14px; margin-bottom: 20px; }}
+  .report-list {{ list-style: none; padding: 0; }}
+  .report-list li {{
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: box-shadow 0.15s;
+  }}
+  .report-list li:hover {{ box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
+  .report-list a {{
+    display: block;
+    padding: 16px 20px;
+    color: var(--link);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+  }}
+  .report-list a:hover {{ text-decoration: underline; }}
+  .report-list .meta {{ font-size: 12px; color: #888; font-weight: 400; }}
+
+  #pw-overlay {{
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: #f5f7fa; z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+  }}
+  #pw-overlay.hidden {{ display: none; }}
+  #pw-box {{
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 40px; max-width: 380px; width: 90%; text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  }}
+  #pw-box h2 {{ margin-bottom: 8px; font-size: 20px; color: var(--heading); }}
+  #pw-box p {{ color: #666; font-size: 13px; margin-bottom: 20px; }}
+  #pw-input {{
+    width: 100%; padding: 10px 14px; font-size: 15px;
+    border: 2px solid var(--border); border-radius: 6px; outline: none; margin-bottom: 12px;
+  }}
+  #pw-input:focus {{ border-color: var(--link); }}
+  #pw-btn {{
+    width: 100%; padding: 10px; font-size: 15px; font-weight: 600;
+    background: var(--heading); color: #fff; border: none; border-radius: 6px; cursor: pointer;
+  }}
+  #pw-btn:hover {{ background: #1565c0; }}
+  #pw-error {{ color: #b71c1c; font-size: 13px; margin-top: 10px; display: none; }}
+  #report-content {{ display: none; }}
+  #report-content.unlocked {{ display: block; }}
+</style>
+</head>
+<body>
+
+{pw_overlay}
+
+<div id="report-content" class="{content_class}">
+  <h1>Long Call Schedule Variations</h1>
+  <div class="subtitle">Block: {esc(block_label)}</div>
+
+  <ul class="report-list" id="report-list">
+    <li><em style="padding:16px 20px; display:block; color:#888;">Loading report list&hellip;</em></li>
+  </ul>
+</div>
+
+<script>
+var REPORT_FILES = [
+{js_entries}
+];
+
+(function() {{
+  var HASH = "{pw_hash}";
+  var overlay = document.getElementById("pw-overlay");
+  var content = document.getElementById("report-content");
+  var input = document.getElementById("pw-input");
+  var btn = document.getElementById("pw-btn");
+  var errEl = document.getElementById("pw-error");
+
+  if (overlay && HASH) {{
+    async function sha256(str) {{
+      var buf = new TextEncoder().encode(str);
+      var hash = await crypto.subtle.digest("SHA-256", buf);
+      return Array.from(new Uint8Array(hash)).map(function(b) {{
+        return b.toString(16).padStart(2, "0");
+      }}).join("");
+    }}
+
+    async function tryUnlock() {{
+      var pw = input.value;
+      var h = await sha256(pw);
+      if (h === HASH) {{
+        overlay.classList.add("hidden");
+        content.classList.add("unlocked");
+      }} else {{
+        errEl.style.display = "block";
+        input.value = "";
+        input.focus();
+      }}
+    }}
+
+    btn.addEventListener("click", tryUnlock);
+    input.addEventListener("keydown", function(e) {{
+      if (e.key === "Enter") tryUnlock();
+    }});
+    input.focus();
+  }}
+
+  var listEl = document.getElementById("report-list");
+  var items = REPORT_FILES.map(function(f, i) {{
+    var seed = f.match(/_([a-f0-9]+)\\.html$/);
+    var seedStr = seed ? seed[1] : "";
+    var ts = f.match(/_(\\d{{8}}_\\d{{6}})_/);
+    var dateStr = "";
+    if (ts) {{
+      var d = ts[1];
+      dateStr = d.substring(0,4) + "-" + d.substring(4,6) + "-" + d.substring(6,8) +
+                " " + d.substring(9,11) + ":" + d.substring(11,13) + ":" + d.substring(13,15);
+    }}
+    return '<li><a href="' + f + '">Variation ' + (i + 1) +
+           '<br><span class="meta">Seed: ' + seedStr + ' &nbsp;|&nbsp; Generated: ' + dateStr + '</span></a></li>';
+  }});
+  listEl.innerHTML = items.join("");
+}})();
+</script>
+
+</body>
+</html>'''
 
     with open(index_path, 'w') as f:
         f.write(html)
 
-    print(f"Updated index.html with {len(filenames)} report(s)")
+    print(f"Wrote index.html with {len(filenames)} report(s)")
 
 
 if __name__ == "__main__":
@@ -1246,9 +1391,17 @@ if __name__ == "__main__":
     # Determine how many reports to generate (default 1)
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 
-    # Reports go into output/reports/ subfolder (for Netlify deployment)
-    REPORTS_DIR = os.path.join(OUTPUT_DIR, "reports")
+    # Reports go into a block-specific subfolder: output/reports/{start}_{end}/
+    block_start_str = BLOCK_START.strftime("%Y-%m-%d")
+    block_end_str = BLOCK_END.strftime("%Y-%m-%d")
+    block_folder = f"{block_start_str}_{block_end_str}"
+    block_label = f"{BLOCK_START.strftime('%B %d, %Y')} – {BLOCK_END.strftime('%B %d, %Y')}"
+
+    REPORTS_DIR = os.path.join(OUTPUT_DIR, "reports", block_folder)
     os.makedirs(REPORTS_DIR, exist_ok=True)
+
+    print(f"Block: {block_label}")
+    print(f"Reports folder: {REPORTS_DIR}")
 
     print("Loading schedule data...")
     data = load_schedule()
@@ -1288,5 +1441,5 @@ if __name__ == "__main__":
             import time
             time.sleep(1)
 
-    # Update index.html with the current list of reports
-    update_index_html(REPORTS_DIR)
+    # Generate/update index.html for this block
+    generate_index_html(REPORTS_DIR, block_label)
