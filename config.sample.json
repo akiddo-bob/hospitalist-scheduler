@@ -1,0 +1,9 @@
+{
+  "block_start": "2026-03-02",
+  "block_end": "2026-06-28",
+  "holidays": ["2026-05-25"],
+  "excluded_providers": [
+    "Last, First",
+    "Last2, First2"
+  ]
+}

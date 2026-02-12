@@ -1,0 +1,13 @@
+# Data files containing PII (provider names, schedules)
+input/
+output/
+config.json
+
+# Comparison tool references hand-crafted solution with provider names
+compare_solutions.py
+
+# OS / IDE
+.DS_Store
+__pycache__/
+*.pyc
+.claude/
