@@ -38,16 +38,16 @@ HOLIDAYS = [
 
 EXCLUDED_PROVIDERS = _config.get("excluded_providers", [])
 
-TEACHING_SERVICES = [
+TEACHING_SERVICES = _config.get("teaching_services", [
     "HA", "HB", "HC", "HD", "HE", "HF", "HG", "HM (Family Medicine)",
-]
+])
 
-DIRECT_CARE_SERVICES = [
+DIRECT_CARE_SERVICES = _config.get("direct_care_services", [
     "H1", "H2", "H3", "H4", "H5", "H6", "H7",
     "H8- Pav 6 & EXAU", "H9", "H10", "H11",
     "H12- Pav 8 & Pav 9", "H13- (Obs overflow)", "H14",
     "H15", "H16", "H17", "H18",
-]
+])
 
 ALL_SOURCE_SERVICES = TEACHING_SERVICES + DIRECT_CARE_SERVICES
 
@@ -107,7 +107,8 @@ def day_name(dt):
     return dt.strftime('%a')
 
 
-VARIATION_SEED = ""  # module-level seed; set before calling assign_long_calls
+import uuid
+VARIATION_SEED = uuid.uuid4().hex[:8]  # random seed each run; override before calling assign_long_calls
 
 def tiebreak_hash(provider, context=""):
     """Deterministic but fair tiebreaker. Returns a float 0-1 based on a hash

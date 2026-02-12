@@ -5,5 +5,15 @@
   "excluded_providers": [
     "Last, First",
     "Last2, First2"
-  ]
+  ],
+  "teaching_services": [
+    "HA", "HB", "HC", "HD", "HE", "HF", "HG", "HM (Family Medicine)"
+  ],
+  "direct_care_services": [
+    "H1", "H2", "H3", "H4", "H5", "H6", "H7",
+    "H8- Pav 6 & EXAU", "H9", "H10", "H11",
+    "H12- Pav 8 & Pav 9", "H13- (Obs overflow)", "H14",
+    "H15", "H16", "H17", "H18"
+  ],
+  "report_password": ""
 }

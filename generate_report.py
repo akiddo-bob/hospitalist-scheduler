@@ -4,6 +4,7 @@ Generate a comprehensive HTML report from long call assignments.
 Auto-refreshes in the browser so you always see the latest data.
 """
 
+import hashlib
 import json
 import os
 from datetime import datetime, timedelta
@@ -42,8 +43,19 @@ def provider_link(name):
     return f'<a href="#{provider_anchor(name)}" title="Jump to detail">{escaped}</a>'
 
 
-def generate_report(assignments, flags, provider_stats, daily_data, all_daily_data=None):
-    """Generate the full HTML report."""
+def _load_report_password():
+    """Load the report password from config.json, if set."""
+    config_file = os.path.join(SCRIPT_DIR, "config.json")
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            cfg = json.load(f)
+        return cfg.get("report_password", "")
+    return ""
+
+
+def generate_report(assignments, flags, provider_stats, daily_data, all_daily_data=None, password=None):
+    """Generate the full HTML report. If password is provided (or set in config.json),
+    the report will be password-protected with a client-side gate."""
     sections = []
 
     sections.append(generate_schedule_table(assignments))
@@ -58,16 +70,29 @@ def generate_report(assignments, flags, provider_stats, daily_data, all_daily_da
     sections.append(generate_overall_stats(assignments, flags, provider_stats))
 
     body = "\n".join(sections)
-    return wrap_html(body)
+
+    # Determine password: explicit arg > config.json > none
+    pw = password if password is not None else _load_report_password()
+
+    return wrap_html(body, pw)
 
 
-def wrap_html(body):
-    """Wrap body content in a full HTML page with styles, auto-refresh, sort & filter."""
+def wrap_html(body, password=""):
+    """Wrap body content in a full HTML page with styles, auto-refresh, sort & filter.
+    If password is non-empty, wraps the report in a client-side password gate."""
     generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+
+    # Compute SHA-256 hash of the password for client-side verification
+    if password:
+        pw_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    else:
+        pw_hash = ""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long Call Assignment Report — March–June 2026</title>
 <style>
   :root {{
@@ -271,9 +296,62 @@ def wrap_html(body):
   .back-to-top:hover {{
     background: #1565c0;
   }}
+
+  /* Password gate */
+  #pw-overlay {{
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #f5f7fa;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }}
+  #pw-overlay.hidden {{ display: none; }}
+  #pw-box {{
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  }}
+  #pw-box h2 {{ margin-bottom: 8px; font-size: 20px; color: var(--heading); border: none; }}
+  #pw-box p {{ color: #666; font-size: 13px; margin-bottom: 20px; }}
+  #pw-input {{
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 15px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+    margin-bottom: 12px;
+  }}
+  #pw-input:focus {{ border-color: var(--link); }}
+  #pw-btn {{
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--heading);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }}
+  #pw-btn:hover {{ background: #1565c0; }}
+  #pw-error {{ color: var(--warn-text); font-size: 13px; margin-top: 10px; display: none; }}
+  #report-content {{ display: none; }}
+  #report-content.unlocked {{ display: block; }}
 </style>
 </head>
 <body>
+
+{"" if not pw_hash else '<div id="pw-overlay"><div id="pw-box"><h2>🔒 Password Required</h2><p>This report contains protected information.</p><input type="password" id="pw-input" placeholder="Enter password" autocomplete="off"><button id="pw-btn">Unlock</button><div id="pw-error">Incorrect password</div></div></div>'}
+
+<div id="report-content" class="{"unlocked" if not pw_hash else ""}">
 
 <a href="#" class="back-to-top" title="Back to top">&uarr; Top</a>
 
@@ -306,6 +384,8 @@ def wrap_html(body):
 </nav>
 
 {body}
+
+</div><!-- end report-content -->
 
 <script>
 (function() {{
@@ -465,6 +545,45 @@ def wrap_html(body):
 }})();
 </script>
 
+{"" if not pw_hash else '''<script>
+(function() {
+  var HASH = "''' + pw_hash + '''";
+  var overlay = document.getElementById("pw-overlay");
+  var content = document.getElementById("report-content");
+  var input = document.getElementById("pw-input");
+  var btn = document.getElementById("pw-btn");
+  var errEl = document.getElementById("pw-error");
+  if (!overlay) return; // no password gate
+
+  async function sha256(str) {
+    var buf = new TextEncoder().encode(str);
+    var hash = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hash)).map(function(b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  async function tryUnlock() {
+    var pw = input.value;
+    var h = await sha256(pw);
+    if (h === HASH) {
+      overlay.classList.add("hidden");
+      content.classList.add("unlocked");
+    } else {
+      errEl.style.display = "block";
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  btn.addEventListener("click", tryUnlock);
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") tryUnlock();
+  });
+  input.focus();
+})();
+</script>
+'''}
 </body>
 </html>"""
 
@@ -1073,7 +1192,64 @@ def generate_overall_stats(assignments, flags, provider_stats):
 </table>"""
 
 
+def update_index_html(reports_dir):
+    """Update the REPORT_FILES list in index.html to reflect current report files."""
+    import glob
+    import re
+
+    index_path = os.path.join(reports_dir, "index.html")
+    if not os.path.exists(index_path):
+        return
+
+    # Find all report HTML files (exclude index.html)
+    report_files = sorted(glob.glob(os.path.join(reports_dir, "longcall_report_*.html")))
+    filenames = [os.path.basename(f) for f in report_files]
+
+    # Build the JS array string
+    js_array = "var REPORT_FILES = [\n"
+    for i, fn in enumerate(filenames):
+        comma = "," if i < len(filenames) - 1 else ""
+        js_array += f'  "{fn}"{comma}\n'
+    js_array += "];"
+
+    # Read and replace in index.html
+    with open(index_path, 'r') as f:
+        html = f.read()
+
+    html = re.sub(
+        r'var REPORT_FILES = \[.*?\];',
+        js_array,
+        html,
+        flags=re.DOTALL
+    )
+
+    # Also update the password hash in case it changed
+    pw = _load_report_password()
+    if pw:
+        new_hash = hashlib.sha256(pw.encode('utf-8')).hexdigest()
+        html = re.sub(
+            r'var HASH = "[a-f0-9]+";',
+            f'var HASH = "{new_hash}";',
+            html
+        )
+
+    with open(index_path, 'w') as f:
+        f.write(html)
+
+    print(f"Updated index.html with {len(filenames)} report(s)")
+
+
 if __name__ == "__main__":
+    import sys
+    import assign_longcall as engine
+
+    # Determine how many reports to generate (default 1)
+    count = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+
+    # Reports go into output/reports/ subfolder (for Netlify deployment)
+    REPORTS_DIR = os.path.join(OUTPUT_DIR, "reports")
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+
     print("Loading schedule data...")
     data = load_schedule()
 
@@ -1081,15 +1257,36 @@ if __name__ == "__main__":
     daily_data = build_daily_data(data)
     all_daily_data = build_all_daily_data(data)
 
-    print("Running assignment engine...")
-    assignments, flags, provider_stats = assign_long_calls(daily_data, all_daily_data)
+    for i in range(count):
+        # Each run gets a fresh random seed (uuid already set at import,
+        # but re-randomise for runs 2+)
+        if i > 0:
+            import uuid
+            engine.VARIATION_SEED = uuid.uuid4().hex[:8]
 
-    print("Generating HTML report...")
-    report = generate_report(assignments, flags, provider_stats, daily_data, all_daily_data)
+        seed = engine.VARIATION_SEED
+        print(f"\n--- Report {i+1}/{count}  (seed: {seed}) ---")
 
-    output_file = os.path.join(OUTPUT_DIR, "longcall_report.html")
-    with open(output_file, 'w') as f:
-        f.write(report)
+        print("Running assignment engine...")
+        assignments, flags, provider_stats = assign_long_calls(daily_data, all_daily_data)
 
-    print(f"Wrote report to: {output_file}")
-    print(f"Report size: {len(report):,} characters")
+        print("Generating HTML report...")
+        report = generate_report(assignments, flags, provider_stats, daily_data, all_daily_data)
+
+        # Timestamped filename for uniqueness
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"longcall_report_{timestamp}_{seed}.html"
+        output_file = os.path.join(REPORTS_DIR, filename)
+        with open(output_file, 'w') as f:
+            f.write(report)
+
+        print(f"Wrote report to: {output_file}")
+        print(f"Report size: {len(report):,} characters")
+
+        # Brief pause to ensure next timestamp is different
+        if i < count - 1:
+            import time
+            time.sleep(1)
+
+    # Update index.html with the current list of reports
+    update_index_html(REPORTS_DIR)
