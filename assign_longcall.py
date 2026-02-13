@@ -257,20 +257,34 @@ def is_standalone_weekend(stretch):
 
 def split_stretch_into_weeks(stretch):
     """
-    Split a stretch into week-sized chunks for assignment purposes.
-    A 'week' here is up to 7 consecutive days. If a stretch is longer
-    than 7 days, split it so each segment gets its own long call.
+    Split a stretch into week-sized chunks aligned to ISO week boundaries.
+    Each chunk contains dates from the same ISO week (Mon-Sun).
+    If a stretch spans multiple ISO weeks, each ISO week becomes its own chunk.
+
+    This alignment ensures that each chunk maps to exactly one ISO week group
+    in Phase 2, preventing a single need from appearing in multiple groups
+    (which could cause duplicate long call assignments).
 
     Returns list of sub-stretches (each a list of dates).
     """
-    if len(stretch) <= 7:
-        return [stretch]
+    if not stretch:
+        return []
 
     weeks = []
-    for i in range(0, len(stretch), 7):
-        week = stretch[i:i+7]
-        if week:
-            weeks.append(week)
+    current_week = [stretch[0]]
+    current_iso = (stretch[0].isocalendar()[0], stretch[0].isocalendar()[1])
+
+    for i in range(1, len(stretch)):
+        dt = stretch[i]
+        dt_iso = (dt.isocalendar()[0], dt.isocalendar()[1])
+        if dt_iso != current_iso:
+            weeks.append(current_week)
+            current_week = [dt]
+            current_iso = dt_iso
+        else:
+            current_week.append(dt)
+
+    weeks.append(current_week)
     return weeks
 
 
@@ -471,6 +485,9 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     G.add_node(pnode, bipartite=1)
                     p_nodes.add(pnode)
                 for slot in daily_slots[dt]:
+                    # DC providers cannot fill teaching slots
+                    if slot == "teaching" and p["category"] == "direct_care":
+                        continue
                     slot_id = f"slot_{dt.strftime('%Y%m%d')}_{slot}"
                     G.add_edge(pnode, slot_id)
         return G, s_nodes
@@ -505,9 +522,10 @@ def assign_long_calls(daily_data, all_daily_data=None):
         if wknd_count >= 3:
             continue  # no need to swap
 
-        # Parse date from slot_id
+        # Parse date and slot from slot_id
         parts = slot_id.split("_")
         date_str = parts[1]
+        slot_type = parts[2]
         dt = datetime.strptime(date_str, "%Y%m%d")
 
         # Find unassigned providers on this day with more weekends worked
@@ -517,6 +535,9 @@ def assign_long_calls(daily_data, all_daily_data=None):
         for p in daily_data[dt]:
             cand = p["provider"]
             if cand in EXCLUDED_PROVIDERS or p["moonlighting"]:
+                continue
+            # DC providers cannot fill teaching slots
+            if slot_type == "teaching" and p["category"] == "direct_care":
                 continue
             cand_node = f"prov_{cand}"
             if cand_node in assigned_providers:
@@ -582,6 +603,11 @@ def assign_long_calls(daily_data, all_daily_data=None):
     # Process weeks in chronological order
     sorted_weeks = sorted(week_groups.keys())
 
+    # Safety net: track which needs have been fulfilled so a provider
+    # can't get two LCs from the same stretch-chunk even if it somehow
+    # appears in multiple week groups.
+    fulfilled_needs = set()  # (provider, first_date_of_need) pairs
+
     # Track consecutive weeks without LC per provider.
     # Key = provider, Value = number of consecutive weeks (so far) without LC.
     # Reset to 0 when they get a LC. Increment when they're in a week but don't get one.
@@ -625,17 +651,41 @@ def assign_long_calls(daily_data, all_daily_data=None):
         # 5. Hash-based tiebreaker so equal-priority providers rotate fairly
         #    across weeks (no alphabetical bias)
         week_ctx = f"{week_key[0]}-W{week_key[1]}"
-        needs.sort(key=lambda n: (-min(consecutive_no_lc.get(n["provider"], 0), 1),
-                                   -provider_missed.get(n["provider"], 0),
-                                   1 if n.get("standalone_weekend") else 0,
-                                   provider_lc_count.get(n["provider"], 0),
-                                   -provider_total_weeks.get(n["provider"], 0),
-                                   tiebreak_hash(n["provider"], week_ctx)))
+
+        # Separate needs into teaching and direct care, so teaching
+        # providers get first pick of teaching slots (preventing DC→teaching crossover).
+        teaching_needs = []
+        dc_needs = []
+        for need in needs:
+            provider = need["provider"]
+            cat = None
+            for dt in need["week_dates"]:
+                cat = get_provider_category(provider, dt, daily_data)
+                if cat:
+                    break
+            if cat == "teaching":
+                teaching_needs.append(need)
+            else:
+                dc_needs.append(need)
+
+        # Sort each group independently by the same priority criteria
+        sort_key = lambda n: (-min(consecutive_no_lc.get(n["provider"], 0), 1),
+                               -provider_missed.get(n["provider"], 0),
+                               1 if n.get("standalone_weekend") else 0,
+                               provider_lc_count.get(n["provider"], 0),
+                               -provider_total_weeks.get(n["provider"], 0),
+                               tiebreak_hash(n["provider"], week_ctx))
+        teaching_needs.sort(key=sort_key)
+        dc_needs.sort(key=sort_key)
+
+        # Process teaching first, then DC — ensures teaching providers
+        # fill teaching slots before DC providers compete for remaining slots
+        ordered_needs = teaching_needs + dc_needs
 
         assigned_this_week = set()
 
         # Check which providers already got a weekend LC in this week from Phase 1.5
-        for need in needs:
+        for need in ordered_needs:
             provider = need["provider"]
             for dt in need["week_dates"]:
                 if is_weekend_or_holiday(dt) and (dt, "teaching") in weekend_pre_assigned:
@@ -645,11 +695,16 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     if assignments[dt]["dc2"] == provider:
                         assigned_this_week.add(provider)
 
-        for need in needs:
+        for need in ordered_needs:
             provider = need["provider"]
             eligible_dates = need["week_dates"]
 
             if provider in EXCLUDED_PROVIDERS:
+                continue
+
+            # Safety net: skip if this need was already fulfilled
+            need_id = (provider, need["week_dates"][0])
+            if need_id in fulfilled_needs:
                 continue
 
             # Skip if already got a weekend LC this week from Phase 1.5
@@ -683,6 +738,7 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     provider_missed[provider] -= 1
 
                 assigned_this_week.add(provider)
+                fulfilled_needs.add(need_id)
             else:
                 # Provider couldn't be assigned
                 is_standalone = need.get("standalone_weekend", False)
@@ -771,7 +827,11 @@ def assign_long_calls(daily_data, all_daily_data=None):
             working_today = any(p["provider"] == provider for p in daily_data[dt])
             if not working_today:
                 continue
+            provider_cat = get_provider_category(provider, dt, daily_data)
             for slot in daily_slots.get(dt, []):
+                # DC providers cannot fill teaching slots
+                if slot == "teaching" and provider_cat == "direct_care":
+                    continue
                 # Don't displace weekend pre-assignments from Phase 1.5
                 if (dt, slot) in weekend_pre_assigned:
                     continue
@@ -934,7 +994,11 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     if is_weekend_or_holiday(dt) and provider_weekend_lc.get(provider, 0) >= 1:
                         continue
 
+                    provider_cat = get_provider_category(provider, dt, daily_data)
                     for slot in daily_slots.get(dt, []):
+                        # DC providers cannot fill teaching slots
+                        if slot == "teaching" and provider_cat == "direct_care":
+                            continue
                         # Don't displace weekend pre-assignments from Phase 1.5
                         if (dt, slot) in weekend_pre_assigned:
                             continue
@@ -1088,9 +1152,9 @@ def find_best_assignment(provider, eligible_dates, daily_data, assignments,
 
             # Check slot compatibility
             if slot == "teaching" and category == "direct_care":
-                # DC providers can fill teaching if no teaching provider available
-                # but deprioritize
-                priority = 10
+                # DC providers NEVER fill teaching slots.
+                # Teaching slots are reserved for teaching service providers.
+                continue
             elif slot == "teaching" and category == "teaching":
                 priority = 0  # best match
             elif slot in ("dc1", "dc2") and category == "teaching":
@@ -1188,6 +1252,10 @@ def find_double_filler(dt, slot, daily_data, assignments, daily_slots,
         if provider in EXCLUDED_PROVIDERS:
             continue
         if p["moonlighting"]:
+            continue
+
+        # DC providers cannot fill teaching slots
+        if slot == "teaching" and p["category"] == "direct_care":
             continue
 
         # Check if already assigned today
