@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate a comprehensive HTML report from long call assignments.
+Hospitalist Scheduler — Generate HTML reports from long call assignments.
 Auto-refreshes in the browser so you always see the latest data.
 """
 
@@ -93,7 +93,7 @@ def wrap_html(body, password=""):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Long Call Assignment Report — March–June 2026</title>
+<title>Hospitalist Scheduler — Long Call Report</title>
 <style>
   :root {{
     --bg: #ffffff;
@@ -355,7 +355,7 @@ def wrap_html(body, password=""):
 
 <a href="#" class="back-to-top" title="Back to top">&uarr; Top</a>
 
-<h1>Long Call Assignment Report</h1>
+<h1>Hospitalist Scheduler — Long Call Report</h1>
 <div class="subtitle">Block: March 2 – June 28, 2026</div>
 <div class="generated">Generated: {generated} &nbsp;|&nbsp; <span id="refresh-status">Auto-refresh: watching for file changes</span></div>
 <hr>
@@ -1231,7 +1231,7 @@ def generate_index_html(reports_dir, block_label):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Long Call Schedule Variations — {esc(block_label)}</title>
+<title>Hospitalist Scheduler — Schedule Variations — {esc(block_label)}</title>
 <style>
   :root {{
     --bg: #ffffff;
@@ -1307,7 +1307,7 @@ def generate_index_html(reports_dir, block_label):
 {pw_overlay}
 
 <div id="report-content" class="{content_class}">
-  <h1>Long Call Schedule Variations</h1>
+  <h1>Hospitalist Scheduler — Schedule Variations</h1>
   <div class="subtitle">Block: {esc(block_label)}</div>
 
   <ul class="report-list" id="report-list">

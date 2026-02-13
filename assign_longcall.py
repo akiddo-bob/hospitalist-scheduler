@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Long Call Assignment Engine
+Hospitalist Scheduler — Long Call Assignment Engine
 Reads parsed schedule data and assigns long call shifts according to rules
 defined in longcall_rules.md.
 """
