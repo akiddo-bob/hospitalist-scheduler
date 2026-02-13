@@ -55,6 +55,7 @@
 - Stretches may vary: some are 5 days (Mon-Fri), some 7 days (Mon-Sun or Sat-Fri), some longer
 - A stretch that spans both weekdays and a weekend counts as one stretch
 - Long stretches (>7 days) are split into week-sized chunks for assignment purposes
+- If a stretch starts on a weekend (e.g., Sat-Fri), the leading Sat-Sun is merged into the following week's chunk rather than being split off as a standalone weekend
 
 ### Step 2: Assign one long call per stretch
 - **Goal: Every provider gets exactly 1 long call per work stretch (per week within the stretch if >7 days)**

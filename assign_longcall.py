@@ -261,9 +261,13 @@ def split_stretch_into_weeks(stretch):
     Each chunk contains dates from the same ISO week (Mon-Sun).
     If a stretch spans multiple ISO weeks, each ISO week becomes its own chunk.
 
-    This alignment ensures that each chunk maps to exactly one ISO week group
-    in Phase 2, preventing a single need from appearing in multiple groups
-    (which could cause duplicate long call assignments).
+    IMPORTANT: If the first chunk is a weekend-only fragment (Sat/Sun at the
+    end of an ISO week) and the stretch continues into the next ISO week,
+    the leading weekend is merged into the following week's chunk. This
+    prevents a leading weekend from being orphaned as a fake "standalone
+    weekend" when the provider's actual stretch is Sat-Sun-Mon-...-Fri.
+    The merged chunk uses the ISO week of the weekday portion so it groups
+    correctly in Phase 2.
 
     Returns list of sub-stretches (each a list of dates).
     """
@@ -285,6 +289,21 @@ def split_stretch_into_weeks(stretch):
             current_week.append(dt)
 
     weeks.append(current_week)
+
+    # Merge a leading weekend-only fragment into the next chunk.
+    # A stretch like [Sat, Sun, Mon, Tue, Wed, Thu, Fri] gets split into
+    # [Sat, Sun] (ISO week N) and [Mon...Fri] (ISO week N+1). The leading
+    # [Sat, Sun] looks like a standalone weekend but it's really the start
+    # of a 7-day stretch. Merge it forward so the provider gets one
+    # assignment need for the full Sat-Fri stretch instead of a deprioritized
+    # standalone weekend + a separate Mon-Fri need.
+    if len(weeks) >= 2:
+        first_chunk = weeks[0]
+        if all(is_weekend_or_holiday(d) for d in first_chunk):
+            # Merge first chunk into second chunk
+            weeks[1] = first_chunk + weeks[1]
+            weeks = weeks[1:]
+
     return weeks
 
 
@@ -595,9 +614,13 @@ def assign_long_calls(daily_data, all_daily_data=None):
     # Group needs by week (ISO week number + year)
     week_groups = defaultdict(list)
     for need in assignment_needs:
-        # Use the Monday of the week as key
-        first_day = need["week_dates"][0]
-        week_key = (first_day.isocalendar()[0], first_day.isocalendar()[1])
+        # Use the first weekday in the chunk to determine which ISO week
+        # this need belongs to. This handles merged Sat-Sun-Mon...Fri chunks
+        # correctly — the weekday portion determines the week group, not the
+        # leading weekend fragment.
+        weekday_dates = [d for d in need["week_dates"] if not is_weekend_or_holiday(d)]
+        key_day = weekday_dates[0] if weekday_dates else need["week_dates"][0]
+        week_key = (key_day.isocalendar()[0], key_day.isocalendar()[1])
         week_groups[week_key].append(need)
 
     # Process weeks in chronological order

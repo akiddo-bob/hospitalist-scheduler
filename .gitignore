@@ -6,3 +6,9 @@ compare_solutions.py
 __pycache__/
 *.pyc
 .claude/
+
+# Netlify CLI state
+.netlify/
+
+# Deployment build artifact
+output/site/

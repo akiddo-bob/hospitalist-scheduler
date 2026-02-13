@@ -191,7 +191,7 @@ Stretches are classified as:
 - **Real stretches** — contain at least one weekday (Mon–Fri). These are the primary assignment targets.
 - **Standalone weekends** — only Sat/Sun with no adjacent weekdays on a source service. These are deprioritized. A provider working only a standalone weekend won't necessarily get a long call from it.
 
-Long stretches that span multiple ISO weeks (Mon–Sun boundaries) are split into week-sized chunks. Each chunk gets one long call assignment need.
+Long stretches that span multiple ISO weeks (Mon–Sun boundaries) are split into week-sized chunks. Each chunk gets one long call assignment need. When a stretch starts on a weekend (e.g., Sat–Fri), the leading Sat–Sun is kept together with the following weekdays as one chunk rather than being split off as a separate standalone weekend.
 
 **The goal: one long call per week worked.** If a provider works 8 weeks in the block, they should end up with roughly 8 long calls.
 
