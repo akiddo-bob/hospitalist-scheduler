@@ -304,6 +304,15 @@ def split_stretch_into_weeks(stretch):
             weeks[1] = first_chunk + weeks[1]
             weeks = weeks[1:]
 
+    # Merge a trailing holiday/weekend-only fragment into the previous chunk.
+    # A stretch like [Mon...Sun, Holiday-Mon] gets split at ISO week boundary
+    # leaving [Holiday-Mon] orphaned. Merge it back into the prior chunk.
+    if len(weeks) >= 2:
+        last_chunk = weeks[-1]
+        if all(is_weekend_or_holiday(d) for d in last_chunk):
+            weeks[-2] = weeks[-2] + last_chunk
+            weeks = weeks[:-1]
+
     return weeks
 
 
@@ -1317,18 +1326,24 @@ def find_double_filler(dt, slot, daily_data, assignments, daily_slots,
         if is_wknd and provider_weekend_lc.get(provider, 0) >= 1:
             weekend_penalty = 1000  # very heavy penalty, but not a hard skip
 
-        # Weekday+weekend split enforcement for doubles
-        # If this provider already has a double, check if the existing double
-        # is same type (weekday/weekend) as this slot
+        # Weekday+weekend split enforcement for doubles.
+        # Check ALL existing LCs in this same stretch (from any phase — not
+        # just Phase 3 doubles). A double should split one weekday + one
+        # weekend. If the provider already has a weekday LC in this stretch,
+        # heavily penalize giving them another weekday LC (and vice versa).
         split_penalty = 0
-        existing_doubles = provider_double_dates.get(provider, [])
-        if existing_doubles:
-            existing_has_weekday = any(not is_weekend_or_holiday(d) for d in existing_doubles)
-            existing_has_weekend = any(is_weekend_or_holiday(d) for d in existing_doubles)
+        existing_lc_dates_in_stretch = []
+        for s_dt in stretch:
+            for s_slot in ["teaching", "dc1", "dc2"]:
+                if assignments.get(s_dt, {}).get(s_slot) == provider:
+                    existing_lc_dates_in_stretch.append(s_dt)
+        if existing_lc_dates_in_stretch:
+            existing_has_weekday_lc = any(not is_weekend_or_holiday(d) for d in existing_lc_dates_in_stretch)
+            existing_has_weekend_lc = any(is_weekend_or_holiday(d) for d in existing_lc_dates_in_stretch)
 
-            if is_wknd and existing_has_weekend:
+            if is_wknd and existing_has_weekend_lc:
                 split_penalty = 500
-            elif not is_wknd and existing_has_weekday:
+            elif not is_wknd and existing_has_weekday_lc:
                 split_penalty = 500
 
         # Penalize providers with few weekends — they already have limited
