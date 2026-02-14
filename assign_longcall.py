@@ -579,6 +579,10 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     else:
                         weight = 50 if cat_match else 60
 
+                    # Add tiny tiebreaker (0 to 0.9) to break symmetry between
+                    # equivalent edges, producing different valid matchings per seed.
+                    weight += tiebreak_hash(provider, f"wknd_{dt.strftime('%Y%m%d')}_{slot}") * 0.9
+
                     G.add_edge(pnode, slot_id, weight=weight)
         return G, s_nodes
 
@@ -667,14 +671,6 @@ def assign_long_calls(daily_data, all_daily_data=None):
             if not (has_weekday and has_weekend):
                 continue
 
-            # Does this stretch need 2+ LCs (i.e., spans 2+ weeks)?
-            weeks = split_stretch_into_weeks(stretch)
-            real_weeks = [w for w in weeks
-                          if not is_moonlighting_in_stretch(provider, w, daily_data)
-                          and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
-            if len(real_weeks) < 2:
-                continue
-
             # Does provider already have a weekend LC in this stretch?
             has_wknd_lc_here = False
             for d in stretch:
@@ -697,37 +693,48 @@ def assign_long_calls(daily_data, all_daily_data=None):
                         continue
                     if assignments[wdt][wslot] is None:
                         # Empty slot! Just take it.
-                        best_swap = (-1, wdt, wslot, None)
+                        best_swap = (-1, 0, wdt, wslot, None)
                         break
                     displaced = assignments[wdt][wslot]
                     if displaced == provider:
                         continue  # already us
 
-                    # Only displace providers on standalone weekends (not in mixed stretches)
+                    # Evaluate displacement priority — prefer displacing:
+                    # 0: empty slots (handled above)
+                    # 1: standalone-weekend providers (don't need weekend LC at all)
+                    # 2: single-week mixed-stretch providers (less critical need)
+                    # 3+: multi-week mixed-stretch providers — don't displace
                     disp_stretch = find_provider_stretch_for_date(displaced, wdt, all_stretches)
+                    disp_priority = 1  # default: standalone weekend
                     if disp_stretch and not is_standalone_weekend(disp_stretch):
-                        # Displaced is in a mixed stretch too — check if they NEED this weekend LC
-                        disp_weeks = split_stretch_into_weeks(disp_stretch)
-                        disp_real_weeks = [w for w in disp_weeks
-                                           if not is_moonlighting_in_stretch(displaced, w, daily_data)
-                                           and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
-                        if len(disp_real_weeks) >= 2:
-                            continue  # they also need it — don't displace
+                        disp_has_weekday = any(not is_weekend_or_holiday(d) for d in disp_stretch)
+                        disp_has_weekend = any(is_weekend_or_holiday(d) for d in disp_stretch)
+                        if disp_has_weekday and disp_has_weekend:
+                            disp_weeks = split_stretch_into_weeks(disp_stretch)
+                            disp_real_weeks = [w for w in disp_weeks
+                                               if not is_moonlighting_in_stretch(displaced, w, daily_data)
+                                               and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
+                            if len(disp_real_weeks) >= 2:
+                                continue  # multi-week mixed — they also need it, don't displace
+                            else:
+                                disp_priority = 2  # single-week mixed — less critical
+                        else:
+                            disp_priority = 1  # weekday-only or weekend-only stretch
 
-                    # Prefer: (0) displacing standalone-weekend providers, (1) category match
+                    # Prefer: (lower disp_priority) displacing standalone > single-week, then cat match
                     cat_match = 0 if (
                         (wslot == "teaching" and prov_cat == "teaching") or
                         (wslot in ("dc1", "dc2") and prov_cat == "direct_care")
                     ) else 1
-                    swap_prio = (cat_match, wdt)
-                    if best_swap is None or swap_prio < best_swap[0:2]:
-                        best_swap = (cat_match, wdt, wslot, displaced)
+                    swap_score = (disp_priority, cat_match, wdt)
+                    if best_swap is None or swap_score < best_swap[:3]:
+                        best_swap = (disp_priority, cat_match, wdt, wslot, displaced)
 
                 if best_swap and best_swap[0] == -1:
                     break  # found empty slot
 
             if best_swap:
-                _, wdt, wslot, displaced = best_swap
+                _, _, wdt, wslot, displaced = best_swap
                 if displaced:
                     # Undo displaced provider's stats
                     provider_lc_count[displaced] -= 1
@@ -1100,7 +1107,7 @@ def assign_long_calls(daily_data, all_daily_data=None):
     _save_wknd_lc_stretches = copy.deepcopy(provider_wknd_lc_stretches)
 
     best_attempt = None  # (violations, assignments, counters, flags)
-    MAX_PHASE3_ATTEMPTS = 20
+    MAX_PHASE3_ATTEMPTS = 50
 
     for _attempt in range(MAX_PHASE3_ATTEMPTS):
         # Restore state to pre-Phase-3
@@ -1518,6 +1525,10 @@ def assign_long_calls(daily_data, all_daily_data=None):
                             if existing_weekday_lcs >= 1:
                                 creates_two_weekday = True
 
+                    # HARD FILTER: never create a two-weekday double
+                    if creates_two_weekday:
+                        continue
+
                     provider_cat = get_provider_category(provider, dt, daily_data)
                     for slot in daily_slots.get(dt, []):
                         # DC providers cannot fill teaching slots
@@ -1539,8 +1550,8 @@ def assign_long_calls(daily_data, all_daily_data=None):
                         if displaced_missed_now > 0:
                             continue
 
-                        # Prefer: (1) no two-weekday double, (2) 3+ gap, (3) most LCs displaced
-                        swap_score = (creates_two_weekday, phase4_gap_penalty, -displaced_lc)
+                        # Prefer: (1) 3+ gap, (2) most LCs displaced
+                        swap_score = (phase4_gap_penalty, -displaced_lc)
                         if best_swap is None or swap_score < best_swap_score:
                             best_swap = (dt, slot, displaced, displaced_missed_now, displaced_lc)
                             best_swap_score = swap_score
@@ -1811,13 +1822,18 @@ def find_double_filler(dt, slot, daily_data, assignments, daily_slots,
                 if assignments.get(s_dt, {}).get(s_slot) == provider:
                     existing_lc_dates_in_stretch.append(s_dt)
 
-        # Don't give more LCs than weeks in the stretch
+        # For multi-week stretches, don't give more LCs than weeks
+        # (Phase 1.75 + Phase 2 already assigned the right number).
+        # Single-week stretches can get doubles (up to 2 LCs).
         stretch_weeks = split_stretch_into_weeks(stretch)
         real_weeks = [w for w in stretch_weeks
                       if not is_moonlighting_in_stretch(provider, w, daily_data)
                       and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
-        max_lcs = len(real_weeks)
-        if len(existing_lc_dates_in_stretch) >= max_lcs:
+        num_weeks = len(real_weeks)
+        if num_weeks >= 2 and len(existing_lc_dates_in_stretch) >= num_weeks:
+            continue
+        # For any stretch, never exceed 2 LCs total
+        if len(existing_lc_dates_in_stretch) >= 2:
             continue
 
         # RULE 2: No double if stretch already has a holiday LC
@@ -1851,8 +1867,12 @@ def find_double_filler(dt, slot, daily_data, assignments, daily_slots,
             split_tier = 0  # adding weekday to existing weekend = good split
         elif is_wknd and existing_has_weekend_lc:
             split_tier = 2  # weekend+weekend = bad
+            continue  # HARD FILTER: never create two-weekend doubles
         elif not is_wknd and existing_has_weekday_lc:
             split_tier = 2  # weekday+weekday = bad
+            # HARD FILTER: never create a two-weekday double in a mixed stretch
+            # (this is the Check 1 rule — weekday+weekend split is required)
+            continue
         else:
             split_tier = 1  # mixed existing + compatible new
 
