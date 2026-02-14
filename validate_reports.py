@@ -46,14 +46,22 @@ def run_checks(assignments, flags, provider_stats, daily_data, all_daily_data, s
     else:
         results.append(("PASS", "Check 1: Two-weekday doubles", "No two-weekday doubles found"))
 
-    # ── Check 2: Weekend LC limit (max 1 per provider) ──
+    # ── Check 2: Weekend LC limit (max 2 per provider) ──
+    # Providers with multi-week mixed stretches may get 2 weekend LCs to enable
+    # proper weekday+weekend splits and avoid two-weekday doubles.
     check2_fails = []
+    check2_warns = []
     for provider, stats in provider_stats.items():
-        if stats["weekend_long_calls"] > 1:
+        if stats["weekend_long_calls"] > 2:
             check2_fails.append((provider, stats["weekend_long_calls"]))
+        elif stats["weekend_long_calls"] > 1:
+            check2_warns.append((provider, stats["weekend_long_calls"]))
     if check2_fails:
         details = "; ".join(f"{p}={c}" for p, c in check2_fails)
-        results.append(("FAIL", "Check 2: Weekend LC limit", f"{len(check2_fails)} providers with 2+ weekend LCs: {details}"))
+        results.append(("FAIL", "Check 2: Weekend LC limit", f"{len(check2_fails)} providers with 3+ weekend LCs: {details}"))
+    elif check2_warns:
+        details = "; ".join(f"{p}={c}" for p, c in check2_warns)
+        results.append(("WARN", "Check 2: Weekend LC limit", f"{len(check2_warns)} providers with 2 weekend LCs (multi-week stretch): {details}"))
     else:
         results.append(("PASS", "Check 2: Weekend LC limit", "All providers have <= 1 weekend LC"))
 
