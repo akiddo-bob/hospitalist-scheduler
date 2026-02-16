@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import random
+import uuid
 import networkx as nx
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -108,7 +109,6 @@ def day_name(dt):
     return dt.strftime('%a')
 
 
-import uuid
 VARIATION_SEED = uuid.uuid4().hex[:8]  # random seed each run; override before calling assign_long_calls
 
 def tiebreak_hash(provider, context=""):
@@ -369,6 +369,256 @@ def get_provider_category(provider, dt, daily_data):
 
 
 # ============================================================
+# STRETCH UTILITIES
+# ============================================================
+
+def find_provider_stretch_for_date(provider, dt, all_stretches):
+    """
+    Find the stretch (list of dates) that contains dt for a given provider.
+    Returns the stretch (list of dates) or None.
+    """
+    stretches = all_stretches.get(provider, [])
+    for stretch in stretches:
+        if dt in stretch:
+            return stretch
+    return None
+
+
+def stretch_has_weekday_and_weekend(stretch):
+    """
+    Check if a stretch contains both weekday and weekend/holiday days.
+    Returns True only if the stretch has at least one weekday AND at least
+    one weekend or holiday day.
+    """
+    has_weekday = any(not is_weekend_or_holiday(d) for d in stretch)
+    has_weekend = any(is_weekend_or_holiday(d) for d in stretch)
+    return has_weekday and has_weekend
+
+
+# ============================================================
+# SCORING FUNCTIONS
+# ============================================================
+
+def find_best_assignment(provider, eligible_dates, daily_data, assignments,
+                         daily_slots, pstate, weekends_worked):
+    """
+    Find the best (date, slot) for a provider on a weekday.
+    Returns (date, slot) or None.
+    """
+    candidates = []
+    category = None
+
+    for dt in eligible_dates:
+        cat = get_provider_category(provider, dt, daily_data)
+        if cat:
+            category = cat
+
+        for slot in daily_slots.get(dt, []):
+            if assignments[dt][slot] is not None:
+                continue  # slot already filled
+
+            # Check slot compatibility
+            if slot == "teaching" and category == "direct_care":
+                continue
+            elif slot == "teaching" and category == "teaching":
+                priority = 0  # best match
+            elif slot in ("dc1", "dc2") and category == "teaching":
+                priority = 5  # teaching overflow into DC
+            elif slot in ("dc1", "dc2") and category == "direct_care":
+                priority = 1  # good match
+            else:
+                priority = 10
+
+            # Weekend slots are pre-assigned by Phase 1.
+            if is_weekend_or_holiday(dt):
+                continue
+
+            # Day of week variety
+            dow = dt.weekday()
+            same_dow_count = pstate[provider]["day_of_week"].count(dow)
+            priority += same_dow_count * 3
+
+            # DC1 vs DC2 balance
+            if slot == "dc1" and pstate[provider]["dc1_count"] > pstate[provider]["dc2_count"]:
+                priority += 2
+            elif slot == "dc2" and pstate[provider]["dc2_count"] > pstate[provider]["dc1_count"]:
+                priority += 2
+
+            candidates.append((priority, dt, slot))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda x: (x[0], tiebreak_hash(provider, x[1].strftime('%Y%m%d') + x[2])))
+    best = candidates[0]
+    return (best[1], best[2])
+
+
+def find_double_filler(dt, slot, daily_data, assignments, daily_slots,
+                       pstate, weekends_worked, all_stretches,
+                       provider_wknd_lc_stretches):
+    """
+    Find a provider to take a double long call to fill an empty slot.
+
+    Hard rules (provider is excluded if violated):
+    1. Must have 2+ calendar days gap between the two LCs in a stretch (prefer 3+).
+    2. No double allowed if the stretch already contains a holiday LC.
+    3. For mixed stretches: never create two-weekday double.
+    4. Never exceed 2 LCs per stretch.
+    5. For multi-week stretches: don't exceed LCs >= weeks worked.
+
+    Sorting priority:
+    1. has_empty_week: prefer providers who have at least one week with no LC
+    2. split_tier: prefer weekday+weekend splits (0) over no-split (1) over same-type (2)
+    3. score: fairness score (missed priority, double penalty, total LCs)
+    """
+    if dt not in daily_data:
+        return None
+
+    is_wknd = is_weekend_or_holiday(dt)
+
+    candidates = []
+    for p in daily_data[dt]:
+        provider = p["provider"]
+        if provider in EXCLUDED_PROVIDERS:
+            continue
+        if p["moonlighting"]:
+            continue
+
+        # DC providers cannot fill teaching slots
+        if slot == "teaching" and p["category"] == "direct_care":
+            continue
+
+        # Check if already assigned today
+        already_today = any(
+            assignments[dt].get(s) == provider
+            for s in ["teaching", "dc1", "dc2"]
+        )
+        if already_today:
+            continue
+
+        # Provider must be in a stretch
+        stretch = find_provider_stretch_for_date(provider, dt, all_stretches)
+        if stretch is None:
+            continue
+
+        is_mixed_stretch = stretch_has_weekday_and_weekend(stretch)
+
+        # Check existing LCs in this same stretch
+        existing_lc_dates = []
+        for s_dt in stretch:
+            for s_slot in ["teaching", "dc1", "dc2"]:
+                if assignments.get(s_dt, {}).get(s_slot) == provider:
+                    existing_lc_dates.append(s_dt)
+
+        # For multi-week stretches, don't give more LCs than weeks
+        stretch_weeks = split_stretch_into_weeks(stretch)
+        real_weeks = [w for w in stretch_weeks
+                      if not is_moonlighting_in_stretch(provider, w, daily_data)
+                      and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
+        num_weeks = len(real_weeks)
+        if num_weeks >= 2 and len(existing_lc_dates) >= num_weeks:
+            continue
+        # Never exceed 2 LCs total per stretch
+        if len(existing_lc_dates) >= 2:
+            continue
+
+        # RULE: No double if stretch already has a holiday LC
+        if any(is_holiday(d) for d in existing_lc_dates):
+            continue
+        if is_holiday(dt) and existing_lc_dates:
+            continue
+
+        # RULE: Minimum 2-day gap (hard), prefer 3+ (soft)
+        min_gap = 999
+        if existing_lc_dates:
+            min_gap = min(abs((dt - d).days) for d in existing_lc_dates)
+            if min_gap < 2:
+                continue
+
+        existing_has_weekday_lc = any(not is_weekend_or_holiday(d) for d in existing_lc_dates)
+        existing_has_weekend_lc = any(is_weekend_or_holiday(d) for d in existing_lc_dates)
+
+        # Determine split quality tier
+        if not existing_lc_dates:
+            split_tier = 1  # first assignment in stretch
+        elif is_wknd and existing_has_weekday_lc and not existing_has_weekend_lc:
+            split_tier = 0  # adding weekend to existing weekday = good split
+        elif not is_wknd and existing_has_weekend_lc and not existing_has_weekday_lc:
+            split_tier = 0  # adding weekday to existing weekend = good split
+        elif is_wknd and existing_has_weekend_lc:
+            continue  # HARD FILTER: never create two-weekend doubles
+        elif not is_wknd and existing_has_weekday_lc:
+            if is_mixed_stretch:
+                continue  # HARD FILTER: never two-weekday double in mixed stretch
+            else:
+                split_tier = 2  # weekday+weekday in weekday-only stretch = fallback
+        else:
+            split_tier = 1
+
+        gap_penalty = 0 if min_gap >= 3 else 500
+
+        # Get provider state early (needed for offset check and scoring)
+        prov_state = pstate[provider]
+
+        # Hard max: 2 weekend LCs per provider
+        if is_wknd and prov_state["weekend_lc"] >= 2:
+            continue
+
+        # Count eligible stretches (non-standalone-weekend)
+        provider_stretches = all_stretches.get(provider, [])
+        eligible_stretches = [st for st in provider_stretches
+                              if not is_standalone_weekend(st)]
+
+        # RULE: doubles should be offset by a no-LC stretch.
+        # After adding this double the provider's total LCs should leave
+        # room for at least one eligible stretch with no LC.
+        # Strong preference (top sort key) — only relaxed if no one qualifies.
+        total_after_double = prov_state["lc_count"] + 1
+        can_offset = 0 if total_after_double <= len(eligible_stretches) - 1 else 1
+
+        # Check whether provider currently has an empty-stretch week
+        all_lc_dates = set()
+        for st in provider_stretches:
+            for st_dt in st:
+                for st_slot in ["teaching", "dc1", "dc2"]:
+                    if assignments.get(st_dt, {}).get(st_slot) == provider:
+                        all_lc_dates.add(st_dt)
+        found_empty_week = False
+        for st in eligible_stretches:
+            weeks = split_stretch_into_weeks(st)
+            for week in weeks:
+                if not any(wd in all_lc_dates for wd in week):
+                    found_empty_week = True
+                    break
+            if found_empty_week:
+                break
+        has_empty_week = 0 if found_empty_week else 1
+
+        # Score: prefer those who missed, then fewest doubles, then fewest total
+        missed = prov_state["missed"]
+        doubles = prov_state["doubles"]
+        total = prov_state["lc_count"]
+
+        weekend_penalty = 1000 if (is_wknd and prov_state["weekend_lc"] >= 1) else 0
+        low_weekend_penalty = 200 if weekends_worked.get(provider, 0) <= 1 else 0
+
+        score = (-missed * 100) + (doubles * 50) + total + weekend_penalty + low_weekend_penalty + gap_penalty
+
+        candidates.append((
+            can_offset, has_empty_week, split_tier, score,
+            tiebreak_hash(provider, dt.strftime('%Y%m%d')),
+            provider
+        ))
+
+    if not candidates:
+        return None
+
+    candidates.sort()
+    return candidates[0][5]
+
+
+# ============================================================
 # MAIN ASSIGNMENT ENGINE
 # ============================================================
 
@@ -383,22 +633,20 @@ def assign_long_calls(daily_data, all_daily_data=None):
     Stretches are always based on source-service days only.
     """
 
-    # Build stretches from source-service days only
+    # --------------------------------------------------------
+    # PHASE 0: Data Preparation
+    # --------------------------------------------------------
+
     all_stretches = identify_stretches(daily_data)
 
-    # Split stretches into weeks and build assignment needs.
-    # Separate real stretches (has weekdays) from standalone weekends.
-    # Standalone weekends are deprioritized for LC assignment.
+    # Build assignment needs: one per provider per weekday-work-week
     assignment_needs = []
     for provider, stretches in all_stretches.items():
         if provider in EXCLUDED_PROVIDERS:
             continue
-
         for stretch in stretches:
             standalone_wknd = is_standalone_weekend(stretch)
-
             if standalone_wknd:
-                # Standalone weekend — single assignment need, deprioritized
                 if is_moonlighting_in_stretch(provider, stretch, daily_data):
                     continue
                 assignment_needs.append({
@@ -407,7 +655,6 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     "standalone_weekend": True,
                 })
             else:
-                # Real stretch — split into weeks
                 weeks = split_stretch_into_weeks(stretch)
                 for week in weeks:
                     if is_moonlighting_in_stretch(provider, week, daily_data):
@@ -418,51 +665,51 @@ def assign_long_calls(daily_data, all_daily_data=None):
                         "standalone_weekend": False,
                     })
 
-    # Pre-compute total non-moonlighting weeks per provider for surplus priority.
-    # "weeks" = only stretches/sub-stretches that contain weekdays.
-    # Standalone weekends do NOT count as weeks.
+    # Total non-moonlighting weeks per provider (standalone weekends don't count)
     provider_total_weeks = defaultdict(int)
     for provider, stretches in all_stretches.items():
         if provider in EXCLUDED_PROVIDERS:
             continue
         for stretch in stretches:
             if is_standalone_weekend(stretch):
-                continue  # standalone weekends don't count as weeks
+                continue
             weeks = split_stretch_into_weeks(stretch)
             for week in weeks:
                 if not is_moonlighting_in_stretch(provider, week, daily_data):
                     provider_total_weeks[provider] += 1
 
-    # Track state
-    assignments = {}  # date -> {"teaching": str, "dc1": str, "dc2": str}
+    # Initialize assignments
+    assignments = {}
     all_dates = sorted(daily_data.keys())
     for dt in all_dates:
         assignments[dt] = {"teaching": None, "dc1": None, "dc2": None}
 
-    # Provider tracking
-    provider_lc_count = defaultdict(int)       # total long calls assigned
-    provider_weekend_lc = defaultdict(int)     # weekend long calls assigned
-    provider_dc1_count = defaultdict(int)      # DC1 assignments
-    provider_dc2_count = defaultdict(int)      # DC2 assignments
-    provider_day_of_week = defaultdict(list)   # days of week assigned
-    provider_missed = defaultdict(int)         # running balance of missed LCs (for priority — goes down when made up)
-    provider_no_lc_weeks = defaultdict(int)   # total count of weeks with no LC (never decremented)
-    provider_double = defaultdict(int)         # double long calls in a stretch
+    # Consolidated provider state
+    pstate = defaultdict(lambda: {
+        "lc_count": 0,
+        "weekend_lc": 0,
+        "dc1_count": 0,
+        "dc2_count": 0,
+        "day_of_week": [],
+        "missed": 0,
+        "no_lc_weeks": 0,
+        "doubles": 0,
+        "consecutive_no_lc": 0,
+        "wknd_lc_stretches": set(),
+    })
 
     flags = []
-    weekends_worked = {}
 
-    # Pre-compute weekends worked for each provider
+    # Pre-compute weekends worked
     all_providers = set()
     for dt, providers in daily_data.items():
         for p in providers:
             all_providers.add(p["provider"])
+    weekends_worked = {}
     for provider in all_providers:
         weekends_worked[provider] = count_weekends_in_block(provider, daily_data)
 
-    # --------------------------------------------------------
-    # PHASE 1: Determine how many slots each day needs
-    # --------------------------------------------------------
+    # Daily slot needs
     daily_slots = {}
     for dt in all_dates:
         if is_weekend_or_holiday(dt):
@@ -470,23 +717,22 @@ def assign_long_calls(daily_data, all_daily_data=None):
         else:
             daily_slots[dt] = ["teaching", "dc1", "dc2"]
 
+    # Group assignment needs by ISO week
+    week_groups = defaultdict(list)
+    for need in assignment_needs:
+        weekday_dates = [d for d in need["week_dates"] if not is_weekend_or_holiday(d)]
+        key_day = weekday_dates[0] if weekday_dates else need["week_dates"][0]
+        week_key = (key_day.isocalendar()[0], key_day.isocalendar()[1])
+        week_groups[week_key].append(need)
+
     # --------------------------------------------------------
-    # PHASE 1.5: Pre-assign ALL weekend slots via weighted bipartite matching
+    # PHASE 1: Advisory Weekend Matching (Bipartite)
     # --------------------------------------------------------
-    # Weekend LC balance is a global constraint that cannot be solved greedily.
-    # We use minimum-weight bipartite matching to assign one weekend slot per
-    # provider, with weights that prioritize providers whose stretch spans
-    # both weekday and weekend days. This prevents two-weekday doubles: a
-    # provider with a weekday+weekend stretch who gets a weekend LC from
-    # Phase 1.5 will have the proper weekday+weekend split if Phase 3 later
-    # gives them a double.
 
     weekend_dates = sorted([dt for dt in all_dates if is_weekend_or_holiday(dt)])
 
-    # Pre-compute: for each provider, which of their stretches span both
-    # weekday and weekend/holiday days?  These providers NEED a weekend slot
-    # to avoid a two-weekday double if they get a double assignment later.
-    provider_needs_weekend_slot = {}  # provider -> set of weekend dates in mixed stretches
+    # Pre-compute: providers with mixed stretches needing weekend slots
+    provider_needs_weekend_slot = {}
     for provider, pstretches in all_stretches.items():
         if provider in EXCLUDED_PROVIDERS:
             continue
@@ -507,10 +753,8 @@ def assign_long_calls(daily_data, all_daily_data=None):
 
     MIN_WEEKENDS_FOR_WKND_LC = 2
 
-    # Pre-compute stretch length (weekday count) for providers who need weekend slots.
-    # Longer stretches = more urgent need for a weekend slot (more weekdays that
-    # could become two-weekday doubles without it).
-    provider_need_urgency = {}  # provider -> max weekday count across mixed stretches with this date
+    # Pre-compute urgency scores
+    provider_need_urgency = {}
     for provider, needed_dates in provider_needs_weekend_slot.items():
         for pstretch in all_stretches.get(provider, []):
             weekday_count = sum(1 for d in pstretch if not is_weekend_or_holiday(d))
@@ -520,20 +764,7 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     provider_need_urgency[(provider, d)] = max(old, weekday_count)
 
     def build_weighted_weekend_graph(min_weekends):
-        """Build weighted bipartite graph for weekend matching.
-
-        Edge weights (lower = higher priority in minimum-weight matching):
-          - 1: provider NEEDS this weekend slot (long mixed stretch, 5+ weekdays)
-               and the slot's category matches the provider's category
-          - 2: provider NEEDS this slot (shorter mixed stretch) + cat match
-          - 4: provider NEEDS this slot but category doesn't match (overflow)
-          - 50: provider doesn't need this slot (weekend-only stretch)
-               and category matches
-          - 60: provider doesn't need this slot and category doesn't match
-
-        The large gap (2-4 vs 50-60) ensures providers with mixed stretches
-        get strong priority over standalone-weekend providers.
-        """
+        """Build weighted bipartite graph for weekend matching."""
         G = nx.Graph()
         s_nodes = set()
         for dt in weekend_dates:
@@ -565,7 +796,6 @@ def assign_long_calls(daily_data, all_daily_data=None):
                         continue
                     slot_id = f"slot_{dt.strftime('%Y%m%d')}_{slot}"
 
-                    # Determine weight
                     cat_match = (
                         (slot == "teaching" and p["category"] == "teaching") or
                         (slot == "dc2" and p["category"] == "direct_care")
@@ -579,10 +809,7 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     else:
                         weight = 50 if cat_match else 60
 
-                    # Add tiny tiebreaker (0 to 0.9) to break symmetry between
-                    # equivalent edges, producing different valid matchings per seed.
                     weight += tiebreak_hash(provider, f"wknd_{dt.strftime('%Y%m%d')}_{slot}") * 0.9
-
                     G.add_edge(pnode, slot_id, weight=weight)
         return G, s_nodes
 
@@ -591,22 +818,19 @@ def assign_long_calls(daily_data, all_daily_data=None):
     try:
         raw_matching = nx.bipartite.minimum_weight_full_matching(G, top_nodes=slot_nodes)
     except (ValueError, nx.NetworkXError):
-        # Fall back to unweighted matching if weighted fails
         raw_matching = nx.bipartite.maximum_matching(G, top_nodes=slot_nodes)
     matched_slots = {}
     for k, v in raw_matching.items():
         if k in slot_nodes:
             matched_slots[k] = v
 
-    # Check if all slots are filled
+    # Check coverage and fall back if needed
     all_slot_nodes = set()
     for dt in weekend_dates:
         for slot in daily_slots[dt]:
             all_slot_nodes.add(f"slot_{dt.strftime('%Y%m%d')}_{slot}")
-    total_weekend_slots = len(all_slot_nodes)
 
-    if len(matched_slots) < total_weekend_slots:
-        # Some slots unfilled — fall back to including all providers (min_weekends=1)
+    if len(matched_slots) < len(all_slot_nodes):
         G_full, slot_nodes_full = build_weighted_weekend_graph(1)
         try:
             raw_matching_full = nx.bipartite.minimum_weight_full_matching(
@@ -618,439 +842,413 @@ def assign_long_calls(daily_data, all_daily_data=None):
             if k in slot_nodes_full and k not in matched_slots:
                 matched_slots[k] = v
 
-    # Apply the matching to assignments
-    weekend_pre_assigned = set()  # track which (date, slot) were pre-assigned
-    # Track which providers have a weekend LC in which stretch (for Phase 3 double prevention)
-    provider_wknd_lc_stretches = defaultdict(set)  # provider -> set of stretch start dates
+    # Convert to advisory suggestions
+    weekend_suggestions = {}
     for slot_id, prov_id in matched_slots.items():
         parts = slot_id.split("_")
         date_str = parts[1]
         slot = parts[2]
         provider = prov_id.replace("prov_", "")
         dt = datetime.strptime(date_str, "%Y%m%d")
-        if assignments[dt][slot] is not None:
-            continue  # safety check
+        weekend_suggestions[(dt, slot)] = provider
 
-        assignments[dt][slot] = provider
-        provider_lc_count[provider] += 1
-        provider_weekend_lc[provider] += 1
-        provider_day_of_week[provider].append(dt.weekday())
+    # --------------------------------------------------------
+    # PHASE 2: Sliding Window Loop (W1 + WE + W2)
+    # --------------------------------------------------------
+
+    def build_week_windows(all_dates, daily_slots):
+        """Build sliding windows of (W1_weekdays, WE_dates, W2_weekdays)."""
+        iso_week_dates = defaultdict(list)
+        for dt in sorted(all_dates):
+            wk = (dt.isocalendar()[0], dt.isocalendar()[1])
+            iso_week_dates[wk].append(dt)
+
+        iso_weeks_sorted = sorted(iso_week_dates.keys())
+
+        windows = []
+        for i, wk in enumerate(iso_weeks_sorted):
+            dates_in_week = iso_week_dates[wk]
+            w1_weekdays = [d for d in dates_in_week if not is_weekend_or_holiday(d)]
+            we_dates = [d for d in dates_in_week if is_weekend_or_holiday(d)]
+
+            w2_week_key = None
+            w2_weekdays = []
+            if i + 1 < len(iso_weeks_sorted):
+                next_wk = iso_weeks_sorted[i + 1]
+                w2_week_key = next_wk
+                w2_weekdays = [d for d in iso_week_dates[next_wk]
+                               if not is_weekend_or_holiday(d)]
+
+            windows.append((w1_weekdays, we_dates, w2_weekdays, wk, w2_week_key))
+
+        return windows
+
+    windows = build_week_windows(all_dates, daily_slots)
+
+    fulfilled_needs = set()
+    weekend_pre_assigned = set()
+    served_next_window = set()
+
+    # Helper to update state after assigning a slot
+    def _assign_slot(provider, dt, slot):
+        """Record an assignment in pstate."""
+        ps = pstate[provider]
+        ps["lc_count"] += 1
+        ps["day_of_week"].append(dt.weekday())
+        if is_weekend_or_holiday(dt):
+            ps["weekend_lc"] += 1
         if slot == "dc1":
-            provider_dc1_count[provider] += 1
+            ps["dc1_count"] += 1
         elif slot == "dc2":
-            provider_dc2_count[provider] += 1
-        weekend_pre_assigned.add((dt, slot))
+            ps["dc2_count"] += 1
+        if ps["missed"] > 0:
+            ps["missed"] -= 1
 
-        # Record which stretch this weekend LC falls in
-        stretch = find_provider_stretch_for_date(provider, dt, all_stretches)
-        if stretch:
-            provider_wknd_lc_stretches[provider].add(stretch[0])  # use start date as key
+    # Helper to undo assignment
+    def _unassign_slot(provider, dt, slot):
+        """Undo an assignment in pstate."""
+        ps = pstate[provider]
+        ps["lc_count"] -= 1
+        dow = dt.weekday()
+        if dow in ps["day_of_week"]:
+            ps["day_of_week"].remove(dow)
+        if is_weekend_or_holiday(dt):
+            ps["weekend_lc"] = max(0, ps["weekend_lc"] - 1)
+        if slot == "dc1":
+            ps["dc1_count"] = max(0, ps["dc1_count"] - 1)
+        elif slot == "dc2":
+            ps["dc2_count"] = max(0, ps["dc2_count"] - 1)
 
-    # Count unfilled weekend slots (should be 0 or very few)
-    unfilled_weekend = 0
-    for dt in weekend_dates:
-        for slot in daily_slots[dt]:
-            if assignments[dt][slot] is None:
-                unfilled_weekend += 1
+    for win_idx, (w1_weekdays, we_dates, w2_weekdays, w1_week_key, w2_week_key) in enumerate(windows):
 
-    # --------------------------------------------------------
-    # PHASE 1.75: Give multi-week mixed stretches a weekend LC
-    # --------------------------------------------------------
-    # Phase 1.5 gives each provider ONE weekend slot globally. But providers
-    # with multi-week mixed stretches need a weekend LC in THAT stretch to
-    # avoid two-weekday doubles. For each such unserved stretch, try to swap
-    # the provider into a weekend slot by displacing someone less critical.
-    for provider, pstretches in all_stretches.items():
-        if provider in EXCLUDED_PROVIDERS:
-            continue
-        for stretch in pstretches:
-            if is_standalone_weekend(stretch):
-                continue
-            has_weekday = any(not is_weekend_or_holiday(d) for d in stretch)
-            has_weekend = any(is_weekend_or_holiday(d) for d in stretch)
-            if not (has_weekday and has_weekend):
-                continue
+        served_from_prev_window = served_next_window.copy()
+        served_next_window = set()
+        served_this_window = set()
 
-            # Does provider already have a weekend LC in this stretch?
-            has_wknd_lc_here = False
-            for d in stretch:
-                if is_weekend_or_holiday(d):
-                    for s in ["teaching", "dc1", "dc2"]:
-                        if assignments.get(d, {}).get(s) == provider:
-                            has_wknd_lc_here = True
-            if has_wknd_lc_here:
-                continue
+        # ==============================================================
+        # Step A: Fill weekend slots with stretch-aware grouping
+        # ==============================================================
 
-            # Try to get provider a weekend slot in this stretch
-            we_dates = [d for d in stretch if is_weekend_or_holiday(d)]
-            best_swap = None  # (priority, wdt, wslot, displaced)
-            for wdt in we_dates:
-                prov_cat = get_provider_category(provider, wdt, daily_data)
-                if not prov_cat:
+        # Teaching coverage guard
+        w1_teaching_slot_count = sum(
+            1 for d in w1_weekdays
+            for s in daily_slots.get(d, [])
+            if s == "teaching" and assignments[d][s] is None
+        )
+        w1_teaching_available = set()
+        if w1_week_key and w1_week_key in week_groups:
+            for need in week_groups[w1_week_key]:
+                prov = need["provider"]
+                if prov in EXCLUDED_PROVIDERS:
                     continue
-                for wslot in daily_slots.get(wdt, []):
-                    if wslot == "teaching" and prov_cat == "direct_care":
-                        continue
-                    if assignments[wdt][wslot] is None:
-                        # Empty slot! Just take it.
-                        best_swap = (-1, 0, wdt, wslot, None)
+                if prov in served_from_prev_window:
+                    continue
+                need_id = (prov, need["week_dates"][0])
+                if need_id in fulfilled_needs:
+                    continue
+                cat = None
+                for d in need["week_dates"]:
+                    cat = get_provider_category(prov, d, daily_data)
+                    if cat:
                         break
-                    displaced = assignments[wdt][wslot]
-                    if displaced == provider:
-                        continue  # already us
+                if cat == "teaching":
+                    w1_teaching_available.add(prov)
 
-                    # Evaluate displacement priority — prefer displacing:
-                    # 0: empty slots (handled above)
-                    # 1: standalone-weekend providers (don't need weekend LC at all)
-                    # 2: single-week mixed-stretch providers (less critical need)
-                    # 3+: multi-week mixed-stretch providers — don't displace
-                    disp_stretch = find_provider_stretch_for_date(displaced, wdt, all_stretches)
-                    disp_priority = 1  # default: standalone weekend
-                    if disp_stretch and not is_standalone_weekend(disp_stretch):
-                        disp_has_weekday = any(not is_weekend_or_holiday(d) for d in disp_stretch)
-                        disp_has_weekend = any(is_weekend_or_holiday(d) for d in disp_stretch)
-                        if disp_has_weekday and disp_has_weekend:
-                            disp_weeks = split_stretch_into_weeks(disp_stretch)
-                            disp_real_weeks = [w for w in disp_weeks
-                                               if not is_moonlighting_in_stretch(displaced, w, daily_data)
-                                               and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
-                            if len(disp_real_weeks) >= 2:
-                                continue  # multi-week mixed — they also need it, don't displace
-                            else:
-                                disp_priority = 2  # single-week mixed — less critical
-                        else:
-                            disp_priority = 1  # weekday-only or weekend-only stretch
+        teaching_consumed_by_weekend = set()
 
-                    # Prefer: (lower disp_priority) displacing standalone > single-week, then cat match
-                    cat_match = 0 if (
-                        (wslot == "teaching" and prov_cat == "teaching") or
-                        (wslot in ("dc1", "dc2") and prov_cat == "direct_care")
-                    ) else 1
-                    swap_score = (disp_priority, cat_match, wdt)
-                    if best_swap is None or swap_score < best_swap[:3]:
-                        best_swap = (disp_priority, cat_match, wdt, wslot, displaced)
-
-                if best_swap and best_swap[0] == -1:
-                    break  # found empty slot
-
-            if best_swap:
-                _, _, wdt, wslot, displaced = best_swap
-                if displaced:
-                    # Undo displaced provider's stats
-                    provider_lc_count[displaced] -= 1
-                    provider_weekend_lc[displaced] -= 1
-                    if wslot == "dc1":
-                        provider_dc1_count[displaced] -= 1
-                    elif wslot == "dc2":
-                        provider_dc2_count[displaced] -= 1
-                    dow = wdt.weekday()
-                    if dow in provider_day_of_week.get(displaced, []):
-                        provider_day_of_week[displaced].remove(dow)
-                    weekend_pre_assigned.discard((wdt, wslot))
-
-                # Assign provider
-                assignments[wdt][wslot] = provider
-                provider_lc_count[provider] += 1
-                provider_weekend_lc[provider] += 1
-                provider_day_of_week[provider].append(wdt.weekday())
-                if wslot == "dc1":
-                    provider_dc1_count[provider] += 1
-                elif wslot == "dc2":
-                    provider_dc2_count[provider] += 1
-                weekend_pre_assigned.add((wdt, wslot))
-
-                pstretch = find_provider_stretch_for_date(provider, wdt, all_stretches)
-                if pstretch:
-                    provider_wknd_lc_stretches[provider].add(pstretch[0])
-
-    # --------------------------------------------------------
-    # PHASE 2: For each assignment need, pick a day and slot
-    # --------------------------------------------------------
-    # Group needs by week (ISO week number + year)
-    week_groups = defaultdict(list)
-    for need in assignment_needs:
-        # Use the first weekday in the chunk to determine which ISO week
-        # this need belongs to. This handles merged Sat-Sun-Mon...Fri chunks
-        # correctly — the weekday portion determines the week group, not the
-        # leading weekend fragment.
-        weekday_dates = [d for d in need["week_dates"] if not is_weekend_or_holiday(d)]
-        key_day = weekday_dates[0] if weekday_dates else need["week_dates"][0]
-        week_key = (key_day.isocalendar()[0], key_day.isocalendar()[1])
-        week_groups[week_key].append(need)
-
-    # Process weeks in chronological order
-    sorted_weeks = sorted(week_groups.keys())
-
-    # Safety net: track which needs have been fulfilled so a provider
-    # can't get two LCs from the same stretch-chunk even if it somehow
-    # appears in multiple week groups.
-    fulfilled_needs = set()  # (provider, first_date_of_need) pairs
-
-    # Track consecutive weeks without LC per provider.
-    # Key = provider, Value = number of consecutive weeks (so far) without LC.
-    # Reset to 0 when they get a LC. Increment when they're in a week but don't get one.
-    consecutive_no_lc = defaultdict(int)
-
-    for week_key in sorted_weeks:
-        needs = week_groups[week_key]
-
-        # Collect all dates in this week that have slots
-        week_dates = set()
-        for need in needs:
-            for dt in need["week_dates"]:
-                week_dates.add(dt)
-        week_dates = sorted(week_dates)
-
-        # Count available slots across the week
-        total_slots = 0
-        for dt in week_dates:
-            for slot in daily_slots.get(dt, []):
-                if assignments[dt][slot] is None:
-                    total_slots += 1
-
-        num_needs = len(needs)
-
-        # Determine if we have surplus or shortage
-        if num_needs > total_slots:
-            # More providers than slots - some will miss
-            pass  # Handle below
-        elif num_needs < total_slots:
-            # More slots than providers - some may need doubles
-            pass  # Handle below
-
-        # Sort needs by priority:
-        # 0. Providers who went 1+ consecutive weeks without LC (highest — enforce the "no more than 1 week gap" rule)
-        # 1. Providers who previously missed (next highest priority)
-        # 2. Standalone weekends are deprioritized (push to end)
-        #    — prefer giving LCs during real stretches with weekdays
-        # 3. Then by fewest long calls so far (fairness)
-        # 4. Then by fewest total weeks (protect providers who work less —
-        #    providers with more weeks can more easily absorb a miss)
-        # 5. Hash-based tiebreaker so equal-priority providers rotate fairly
-        #    across weeks (no alphabetical bias)
-        week_ctx = f"{week_key[0]}-W{week_key[1]}"
-
-        # Separate needs into teaching and direct care, so teaching
-        # providers get first pick of teaching slots (preventing DC→teaching crossover).
-        teaching_needs = []
-        dc_needs = []
-        for need in needs:
-            provider = need["provider"]
-            cat = None
-            for dt in need["week_dates"]:
-                cat = get_provider_category(provider, dt, daily_data)
-                if cat:
-                    break
-            if cat == "teaching":
-                teaching_needs.append(need)
-            else:
-                dc_needs.append(need)
-
-        # Sort each group independently by the same priority criteria
-        sort_key = lambda n: (-min(consecutive_no_lc.get(n["provider"], 0), 1),
-                               -provider_missed.get(n["provider"], 0),
-                               1 if n.get("standalone_weekend") else 0,
-                               provider_lc_count.get(n["provider"], 0),
-                               -provider_total_weeks.get(n["provider"], 0),
-                               tiebreak_hash(n["provider"], week_ctx))
-        teaching_needs.sort(key=sort_key)
-        dc_needs.sort(key=sort_key)
-
-        # Process teaching first, then DC — ensures teaching providers
-        # fill teaching slots before DC providers compete for remaining slots
-        ordered_needs = teaching_needs + dc_needs
-
-        assigned_this_week = set()
-
-        # Check which providers already got a weekend LC in this week from Phase 1.5
-        for need in ordered_needs:
-            provider = need["provider"]
-            for dt in need["week_dates"]:
-                if is_weekend_or_holiday(dt) and (dt, "teaching") in weekend_pre_assigned:
-                    if assignments[dt]["teaching"] == provider:
-                        assigned_this_week.add(provider)
-                if is_weekend_or_holiday(dt) and (dt, "dc2") in weekend_pre_assigned:
-                    if assignments[dt]["dc2"] == provider:
-                        assigned_this_week.add(provider)
-
-        for need in ordered_needs:
-            provider = need["provider"]
-            eligible_dates = need["week_dates"]
-
-            if provider in EXCLUDED_PROVIDERS:
+        for we_dt in we_dates:
+            if we_dt not in daily_data:
                 continue
+            for slot in daily_slots.get(we_dt, []):
+                if assignments[we_dt][slot] is not None:
+                    continue
 
-            # Safety net: skip if this need was already fulfilled
-            need_id = (provider, need["week_dates"][0])
-            if need_id in fulfilled_needs:
-                continue
+                candidates = []
+                for p in daily_data[we_dt]:
+                    provider = p["provider"]
+                    if provider in EXCLUDED_PROVIDERS or p["moonlighting"]:
+                        continue
 
-            # Skip if already got a weekend LC this week from Phase 1.5
-            if provider in assigned_this_week:
-                continue
+                    # Hard max: 2 weekend LCs per provider
+                    if pstate[provider]["weekend_lc"] >= 2:
+                        continue
 
-            # Find best day and slot for this provider
-            best_assignment = find_best_assignment(
-                provider, eligible_dates, daily_data, assignments,
-                daily_slots, provider_lc_count, provider_weekend_lc,
-                provider_dc1_count, provider_dc2_count,
-                provider_day_of_week, weekends_worked, flags
+                    if slot == "teaching" and p["category"] == "direct_care":
+                        continue
+
+                    stretch = find_provider_stretch_for_date(provider, we_dt, all_stretches)
+                    stretch_dates = set(stretch) if stretch else set()
+                    in_w1 = bool(stretch_dates & set(w1_weekdays)) if w1_weekdays else False
+                    in_w2 = bool(stretch_dates & set(w2_weekdays)) if w2_weekdays else False
+
+                    if in_w1 and not in_w2:
+                        group_priority = 0  # Group A: ending on weekend
+                    elif in_w2 and not in_w1:
+                        group_priority = 1  # Group B: starting on weekend
+                    elif in_w1 and in_w2:
+                        group_priority = 0  # spans both — treat as Group A
+                    else:
+                        group_priority = 2  # Group C: standalone weekend
+
+                    if provider in served_this_window:
+                        continue
+                    if provider in served_from_prev_window:
+                        continue
+
+                    # Teaching coverage guard
+                    if p["category"] == "teaching" and provider in w1_teaching_available:
+                        remaining = len(w1_teaching_available - served_this_window - teaching_consumed_by_weekend - {provider})
+                        if remaining < w1_teaching_slot_count:
+                            continue
+
+                    advisory_bonus = -0.5 if weekend_suggestions.get((we_dt, slot)) == provider else 0
+
+                    sort_key = (
+                        group_priority,
+                        -min(pstate[provider]["consecutive_no_lc"], 1),
+                        -pstate[provider]["missed"],
+                        pstate[provider]["lc_count"],
+                        -provider_total_weeks.get(provider, 0),
+                        advisory_bonus,
+                        tiebreak_hash(provider, f"wknd_{we_dt.strftime('%Y%m%d')}_{slot}"),
+                    )
+
+                    candidates.append((sort_key, provider, group_priority))
+
+                if not candidates:
+                    continue
+
+                candidates.sort(key=lambda x: x[0])
+                _, best_provider, best_group = candidates[0]
+
+                if best_provider in w1_teaching_available:
+                    teaching_consumed_by_weekend.add(best_provider)
+
+                assignments[we_dt][slot] = best_provider
+                _assign_slot(best_provider, we_dt, slot)
+                weekend_pre_assigned.add((we_dt, slot))
+
+                # Record stretch with weekend LC
+                stretch = find_provider_stretch_for_date(best_provider, we_dt, all_stretches)
+                if stretch:
+                    pstate[best_provider]["wknd_lc_stretches"].add(stretch[0])
+
+                served_this_window.add(best_provider)
+
+                if best_group == 1:
+                    served_next_window.add(best_provider)
+
+                for need in assignment_needs:
+                    if need["provider"] == best_provider and we_dt in need["week_dates"]:
+                        need_id = (best_provider, need["week_dates"][0])
+                        fulfilled_needs.add(need_id)
+
+        # ==============================================================
+        # Step B: Fill W1 weekday teaching slots
+        # ==============================================================
+        if w1_week_key and w1_week_key in week_groups:
+            w1_needs = week_groups[w1_week_key]
+
+            w1_teaching_needs = []
+            for need in w1_needs:
+                provider = need["provider"]
+                if provider in EXCLUDED_PROVIDERS:
+                    continue
+                need_id = (provider, need["week_dates"][0])
+                if need_id in fulfilled_needs:
+                    continue
+                if provider in served_this_window or provider in served_from_prev_window:
+                    continue
+                cat = None
+                for dt in need["week_dates"]:
+                    cat = get_provider_category(provider, dt, daily_data)
+                    if cat:
+                        break
+                if cat == "teaching":
+                    w1_teaching_needs.append(need)
+
+            week_ctx = f"{w1_week_key[0]}-W{w1_week_key[1]}"
+            sort_key_fn = lambda n: (
+                -min(pstate[n["provider"]]["consecutive_no_lc"], 1),
+                -pstate[n["provider"]]["missed"],
+                1 if n.get("standalone_weekend") else 0,
+                pstate[n["provider"]]["lc_count"],
+                -provider_total_weeks.get(n["provider"], 0),
+                tiebreak_hash(n["provider"], week_ctx),
             )
+            w1_teaching_needs.sort(key=sort_key_fn)
 
-            if best_assignment:
-                dt, slot = best_assignment
-                assignments[dt][slot] = provider
-                provider_lc_count[provider] += 1
-                provider_day_of_week[provider].append(dt.weekday())
+            for need in w1_teaching_needs:
+                provider = need["provider"]
+                eligible_dates = need["week_dates"]
 
-                if is_weekend_or_holiday(dt):
-                    provider_weekend_lc[provider] += 1
+                best = find_best_assignment(
+                    provider, eligible_dates, daily_data, assignments,
+                    daily_slots, pstate, weekends_worked
+                )
 
-                if slot == "dc1":
-                    provider_dc1_count[provider] += 1
-                elif slot == "dc2":
-                    provider_dc2_count[provider] += 1
+                if best:
+                    dt, slot_assigned = best
+                    assignments[dt][slot_assigned] = provider
+                    _assign_slot(provider, dt, slot_assigned)
+                    served_this_window.add(provider)
+                    need_id = (provider, need["week_dates"][0])
+                    fulfilled_needs.add(need_id)
 
-                # If this provider had missed before, reduce the count
-                if provider_missed[provider] > 0:
-                    provider_missed[provider] -= 1
+            # ==============================================================
+            # Step C: Fill W1 weekday DC slots (DC + teaching overflow)
+            # ==============================================================
+            w1_dc_needs = []
+            for need in w1_needs:
+                provider = need["provider"]
+                if provider in EXCLUDED_PROVIDERS:
+                    continue
+                need_id = (provider, need["week_dates"][0])
+                if need_id in fulfilled_needs:
+                    continue
+                if provider in served_this_window or provider in served_from_prev_window:
+                    continue
+                cat = None
+                for dt in need["week_dates"]:
+                    cat = get_provider_category(provider, dt, daily_data)
+                    if cat:
+                        break
+                if cat != "teaching":
+                    w1_dc_needs.append(need)
 
-                assigned_this_week.add(provider)
-                fulfilled_needs.add(need_id)
-            else:
-                # Provider couldn't be assigned
-                is_standalone = need.get("standalone_weekend", False)
-                if is_standalone:
-                    # Standalone weekends are deprioritized — no flag or missed count
-                    pass
+            # Also add teaching providers who weren't assigned in Step B
+            for need in w1_needs:
+                provider = need["provider"]
+                if provider in EXCLUDED_PROVIDERS:
+                    continue
+                need_id = (provider, need["week_dates"][0])
+                if need_id in fulfilled_needs:
+                    continue
+                if provider in served_this_window or provider in served_from_prev_window:
+                    continue
+                cat = None
+                for dt in need["week_dates"]:
+                    cat = get_provider_category(provider, dt, daily_data)
+                    if cat:
+                        break
+                if cat == "teaching" and need not in w1_dc_needs:
+                    w1_dc_needs.append(need)
+
+            w1_dc_needs.sort(key=sort_key_fn)
+
+            for need in w1_dc_needs:
+                provider = need["provider"]
+                eligible_dates = need["week_dates"]
+
+                if provider in EXCLUDED_PROVIDERS:
+                    continue
+                need_id = (provider, need["week_dates"][0])
+                if need_id in fulfilled_needs:
+                    continue
+                if provider in served_this_window:
+                    continue
+
+                best = find_best_assignment(
+                    provider, eligible_dates, daily_data, assignments,
+                    daily_slots, pstate, weekends_worked
+                )
+
+                if best:
+                    dt, slot_assigned = best
+                    assignments[dt][slot_assigned] = provider
+                    _assign_slot(provider, dt, slot_assigned)
+                    served_this_window.add(provider)
+                    fulfilled_needs.add(need_id)
                 else:
-                    provider_missed[provider] += 1
-                    provider_no_lc_weeks[provider] += 1
-                    flags.append({
-                        "date": need["week_dates"][0].strftime("%m/%d/%Y"),
-                        "provider": provider,
-                        "flag_type": "NO_LONGCALL",
-                        "message": f"No long call assigned for week {need['week_dates'][0].strftime('%m/%d')} - {need['week_dates'][-1].strftime('%m/%d')}",
-                    })
+                    is_standalone = need.get("standalone_weekend", False)
+                    if not is_standalone:
+                        pstate[provider]["missed"] += 1
+                        pstate[provider]["no_lc_weeks"] += 1
+                        flags.append({
+                            "date": need["week_dates"][0].strftime("%m/%d/%Y"),
+                            "provider": provider,
+                            "flag_type": "NO_LONGCALL",
+                            "message": f"No long call assigned for week {need['week_dates'][0].strftime('%m/%d')} - {need['week_dates'][-1].strftime('%m/%d')}",
+                        })
 
-        # Update consecutive-week-without-LC tracker for all providers in this week
-        # Skip standalone weekends — they don't count for consecutive tracking
-        providers_in_week = set(n["provider"] for n in needs if not n.get("standalone_weekend"))
-        for provider in providers_in_week:
-            if provider in assigned_this_week:
-                consecutive_no_lc[provider] = 0
-            else:
-                consecutive_no_lc[provider] = consecutive_no_lc.get(provider, 0) + 1
-                # Flag if this is a second consecutive week without LC
-                if consecutive_no_lc[provider] >= 2:
-                    flags.append({
-                        "date": needs[0]["week_dates"][0].strftime("%m/%d/%Y"),
-                        "provider": provider,
-                        "flag_type": "CONSEC_NO_LC",
-                        "message": f"2+ consecutive weeks without long call ({consecutive_no_lc[provider]} weeks)",
-                    })
+            # ==============================================================
+            # Step D: Track consecutive misses for W1 providers
+            # ==============================================================
+            providers_in_w1 = set(
+                n["provider"] for n in w1_needs
+                if not n.get("standalone_weekend")
+            )
+            for provider in providers_in_w1:
+                if provider in served_this_window or provider in served_from_prev_window:
+                    pstate[provider]["consecutive_no_lc"] = 0
+                else:
+                    pstate[provider]["consecutive_no_lc"] += 1
+                    if pstate[provider]["consecutive_no_lc"] >= 2:
+                        flag_date = w1_weekdays[0] if w1_weekdays else (we_dates[0] if we_dates else None)
+                        if flag_date:
+                            flags.append({
+                                "date": flag_date.strftime("%m/%d/%Y"),
+                                "provider": provider,
+                                "flag_type": "CONSEC_NO_LC",
+                                "message": f"2+ consecutive weeks without long call ({pstate[provider]['consecutive_no_lc']} weeks)",
+                            })
 
     # --------------------------------------------------------
-    # PHASE 2.5: Minimum guarantee — providers with weekday
-    # weeks must get at least 1 long call
+    # PHASE 2.5: Minimum guarantee
     # --------------------------------------------------------
-    # Find providers who have 0 long calls but work at least one
-    # non-moonlighting week that contains weekdays
     for need in assignment_needs:
         provider = need["provider"]
         if provider in EXCLUDED_PROVIDERS:
             continue
-        if provider_lc_count[provider] > 0:
-            continue  # already has at least one
-
-        # Check if this need's week contains weekdays
+        if pstate[provider]["lc_count"] > 0:
+            continue
         has_weekday = any(not is_weekend_or_holiday(d) for d in need["week_dates"])
         if not has_weekday:
             continue
 
-        # This provider needs a guaranteed assignment. Try to find a slot.
-        # Strategy: look for a slot on one of their eligible days where we
-        # can swap out the current assignee (pick the one with the most LCs)
         eligible_dates = need["week_dates"]
 
-        # First try: find an open slot (unlikely since Phase 2 just ran)
+        # First try: find an open slot
         best = find_best_assignment(
             provider, eligible_dates, daily_data, assignments,
-            daily_slots, provider_lc_count, provider_weekend_lc,
-            provider_dc1_count, provider_dc2_count,
-            provider_day_of_week, weekends_worked, flags
+            daily_slots, pstate, weekends_worked
         )
         if best:
             dt, slot = best
             assignments[dt][slot] = provider
-            provider_lc_count[provider] += 1
-            provider_day_of_week[provider].append(dt.weekday())
-            if is_weekend_or_holiday(dt):
-                provider_weekend_lc[provider] += 1
-            if slot == "dc1":
-                provider_dc1_count[provider] += 1
-            elif slot == "dc2":
-                provider_dc2_count[provider] += 1
-            if provider_missed[provider] > 0:
-                provider_missed[provider] -= 1
+            _assign_slot(provider, dt, slot)
             continue
 
         # Second try: swap out the provider with the most long calls
-        # on one of this provider's eligible days
-        best_swap = None  # (dt, slot, displaced_provider, displaced_lc_count)
+        best_swap = None
         for dt in eligible_dates:
             if dt not in daily_data:
                 continue
-            # Verify this provider is actually working this day
             working_today = any(p["provider"] == provider for p in daily_data[dt])
             if not working_today:
                 continue
             provider_cat = get_provider_category(provider, dt, daily_data)
             for slot in daily_slots.get(dt, []):
-                # DC providers cannot fill teaching slots
                 if slot == "teaching" and provider_cat == "direct_care":
                     continue
-                # Don't displace weekend pre-assignments from Phase 1.5
                 if (dt, slot) in weekend_pre_assigned:
                     continue
                 current = assignments[dt][slot]
                 if current is None:
                     continue
-                current_lc = provider_lc_count.get(current, 0)
+                current_lc = pstate[current]["lc_count"]
                 if current_lc <= 1:
-                    continue  # don't displace someone who also only has 1
+                    continue
                 if best_swap is None or current_lc > best_swap[3]:
                     best_swap = (dt, slot, current, current_lc)
 
         if best_swap:
             dt, slot, displaced, _ = best_swap
-            # Undo the displaced provider's stats
-            provider_lc_count[displaced] -= 1
-            if is_weekend_or_holiday(dt):
-                provider_weekend_lc[displaced] -= 1
-            if slot == "dc1":
-                provider_dc1_count[displaced] -= 1
-            elif slot == "dc2":
-                provider_dc2_count[displaced] -= 1
-            # Remove the day from their DOW list
-            dow = dt.weekday()
-            if dow in provider_day_of_week[displaced]:
-                provider_day_of_week[displaced].remove(dow)
-            # Track the displaced provider's miss
-            provider_missed[displaced] += 1
+            _unassign_slot(displaced, dt, slot)
+            pstate[displaced]["missed"] += 1
 
-            # Assign the guaranteed provider
             assignments[dt][slot] = provider
-            provider_lc_count[provider] += 1
-            provider_day_of_week[provider].append(dt.weekday())
-            if is_weekend_or_holiday(dt):
-                provider_weekend_lc[provider] += 1
-            if slot == "dc1":
-                provider_dc1_count[provider] += 1
-            elif slot == "dc2":
-                provider_dc2_count[provider] += 1
-            if provider_missed[provider] > 0:
-                provider_missed[provider] -= 1
+            _assign_slot(provider, dt, slot)
 
             flags.append({
                 "date": dt.strftime("%m/%d/%Y"),
@@ -1059,23 +1257,18 @@ def assign_long_calls(daily_data, all_daily_data=None):
                 "message": f"Swapped in (minimum guarantee) — displaced {displaced}",
             })
 
-    # Note: NO_LONGCALL flags are kept even if the provider has LCs in other weeks.
-    # Each flag represents a specific week where no LC was assigned.
-
     # --------------------------------------------------------
     # PHASE 3 + 3.5 with RETRY LOOP
     # --------------------------------------------------------
-    # We wrap Phase 3 (fill remaining empty slots) and Phase 3.5 (fix two-weekday
-    # doubles) in a retry loop. Each attempt uses a different slot ordering.
-    # If one ordering creates unsolvable two-weekday violations, another ordering
-    # may produce a better result. We keep the best attempt.
 
     def _count_two_weekday_violations(asn):
-        """Count two-weekday double violations in the given assignments."""
+        """Count two-weekday double violations in mixed stretches."""
         count = 0
         for provider, pstretches in all_stretches.items():
             for stretch in pstretches:
                 if is_standalone_weekend(stretch):
+                    continue
+                if not stretch_has_weekday_and_weekend(stretch):
                     continue
                 lc_dates = []
                 for sdt in stretch:
@@ -1083,61 +1276,45 @@ def assign_long_calls(daily_data, all_daily_data=None):
                         if asn.get(sdt, {}).get(sslot) == provider:
                             lc_dates.append(sdt)
                 if len(lc_dates) >= 2:
-                    weekday_lcs_in = [d for d in lc_dates if not is_weekend_or_holiday(d)]
-                    if len(weekday_lcs_in) >= 2:
+                    weekday_lcs = [d for d in lc_dates if not is_weekend_or_holiday(d)]
+                    if len(weekday_lcs) >= 2:
                         count += 1
         return count
 
-    # Save state before Phase 3 so we can restore and retry
-    def _save_defaultdict(dd):
-        """Copy a defaultdict preserving its default_factory."""
-        result = defaultdict(dd.default_factory)
-        result.update(dd)
-        return result
-
+    # Save state before Phase 3 for retry loop
     _save_assignments = copy.deepcopy(assignments)
-    _save_lc_count = _save_defaultdict(provider_lc_count)
-    _save_weekend_lc = _save_defaultdict(provider_weekend_lc)
-    _save_dc1_count = _save_defaultdict(provider_dc1_count)
-    _save_dc2_count = _save_defaultdict(provider_dc2_count)
-    _save_day_of_week = defaultdict(list, {k: list(v) for k, v in provider_day_of_week.items()})
-    _save_missed = _save_defaultdict(provider_missed)
-    _save_double = _save_defaultdict(provider_double)
+    _save_pstate = copy.deepcopy(dict(pstate))
     _save_flags = list(flags)
-    _save_wknd_lc_stretches = copy.deepcopy(provider_wknd_lc_stretches)
 
-    best_attempt = None  # (violations, assignments, counters, flags)
+    best_attempt = None
     MAX_PHASE3_ATTEMPTS = 50
 
     for _attempt in range(MAX_PHASE3_ATTEMPTS):
         # Restore state to pre-Phase-3
         if _attempt > 0:
             assignments = copy.deepcopy(_save_assignments)
-            provider_lc_count = _save_defaultdict(_save_lc_count)
-            provider_weekend_lc = _save_defaultdict(_save_weekend_lc)
-            provider_dc1_count = _save_defaultdict(_save_dc1_count)
-            provider_dc2_count = _save_defaultdict(_save_dc2_count)
-            provider_day_of_week = defaultdict(list, {k: list(v) for k, v in _save_day_of_week.items()})
-            provider_missed = _save_defaultdict(_save_missed)
-            provider_double = _save_defaultdict(_save_double)
+            pstate = defaultdict(lambda: {
+                "lc_count": 0, "weekend_lc": 0, "dc1_count": 0, "dc2_count": 0,
+                "day_of_week": [], "missed": 0, "no_lc_weeks": 0, "doubles": 0,
+                "consecutive_no_lc": 0, "wknd_lc_stretches": set(),
+            })
+            for k, v in copy.deepcopy(_save_pstate).items():
+                pstate[k] = v
             flags = list(_save_flags)
-            provider_wknd_lc_stretches = copy.deepcopy(_save_wknd_lc_stretches)
 
         provider_double_dates = defaultdict(list)
 
-        # Collect all empty slots
+        # Collect empty slots
         empty_slots = []
         for dt in all_dates:
             for slot in daily_slots.get(dt, []):
                 if assignments[dt][slot] is None:
                     empty_slots.append((dt, slot))
 
-        # Sort: weekend slots first, then weekday slots (both in date order)
-        # On retries, add a seeded shuffle within each group to try different orderings
+        # Sort: weekend-first on attempt 0, shuffle on retries
         if _attempt == 0:
             empty_slots.sort(key=lambda x: (0 if is_weekend_or_holiday(x[0]) else 1, x[0]))
         else:
-            # Use a deterministic but different shuffle for each attempt+seed combo
             attempt_rng = random.Random(f"{VARIATION_SEED}_attempt_{_attempt}")
             weekend_slots = [(dt, s) for dt, s in empty_slots if is_weekend_or_holiday(dt)]
             weekday_slots = [(dt, s) for dt, s in empty_slots if not is_weekend_or_holiday(dt)]
@@ -1148,30 +1325,25 @@ def assign_long_calls(daily_data, all_daily_data=None):
         # ---- PHASE 3: Fill remaining empty slots ----
         for dt, slot in empty_slots:
             if assignments[dt][slot] is not None:
-                continue  # may have been filled by a previous iteration's side effect
+                continue
             filler = find_double_filler(
                 dt, slot, daily_data, assignments, daily_slots,
-                provider_lc_count, provider_weekend_lc,
-                provider_dc1_count, provider_dc2_count,
-                provider_day_of_week, provider_missed,
-                provider_double, weekends_worked,
-                provider_double_dates, all_stretches,
-                provider_wknd_lc_stretches, flags
+                pstate, weekends_worked, all_stretches,
+                pstate  # provider_wknd_lc_stretches lives inside pstate
             )
             if filler:
                 assignments[dt][slot] = filler
-                provider_lc_count[filler] += 1
-                provider_double[filler] += 1
-                provider_day_of_week[filler].append(dt.weekday())
+                pstate[filler]["lc_count"] += 1
+                pstate[filler]["doubles"] += 1
+                pstate[filler]["day_of_week"].append(dt.weekday())
                 provider_double_dates[filler].append(dt)
 
                 if is_weekend_or_holiday(dt):
-                    provider_weekend_lc[filler] += 1
-
+                    pstate[filler]["weekend_lc"] += 1
                 if slot == "dc1":
-                    provider_dc1_count[filler] += 1
+                    pstate[filler]["dc1_count"] += 1
                 elif slot == "dc2":
-                    provider_dc2_count[filler] += 1
+                    pstate[filler]["dc2_count"] += 1
 
                 flags.append({
                     "date": dt.strftime("%m/%d/%Y"),
@@ -1187,7 +1359,7 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     "message": f"Could not fill {slot} slot",
                 })
 
-        # ---- PHASE 3.5: Fix two-weekday doubles by reshuffling ----
+        # ---- PHASE 3.5: Fix two-weekday doubles ----
         for _phase35_round in range(3):
             any_fixed = False
             for provider, pstretches in all_stretches.items():
@@ -1248,7 +1420,6 @@ def assign_long_calls(daily_data, all_daily_data=None):
                                         prov_gap_ok = False
                                     elif gap < 3:
                                         prov_gap_penalty = 1
-
                                 if not prov_gap_ok:
                                     continue
 
@@ -1273,20 +1444,19 @@ def assign_long_calls(daily_data, all_daily_data=None):
                                         if occ_gap < 2:
                                             continue
 
-                                prov_wknd_lcs = provider_weekend_lc.get(provider, 0)
+                                prov_wknd_lcs = pstate[provider]["weekend_lc"]
                                 swap_candidates.append((
-                                    prov_wknd_lcs,
-                                    prov_gap_penalty,
+                                    prov_wknd_lcs, prov_gap_penalty,
                                     wdt, wslot, occupant, wkdy_dt, wkdy_slot))
 
                     swap_candidates.sort()
                     if swap_candidates:
                         _, _, wdt, wslot, occupant, wkdy_dt, wkdy_slot = swap_candidates[0]
-                        if provider_weekend_lc.get(provider, 0) < 2:
+                        if pstate[provider]["weekend_lc"] < 2:
                             assignments[wkdy_dt][wkdy_slot] = occupant
                             assignments[wdt][wslot] = provider
-                            provider_weekend_lc[provider] += 1
-                            provider_weekend_lc[occupant] = max(0, provider_weekend_lc.get(occupant, 0) - 1)
+                            pstate[provider]["weekend_lc"] += 1
+                            pstate[occupant]["weekend_lc"] = max(0, pstate[occupant]["weekend_lc"] - 1)
                             fixed = True
                             any_fixed = True
 
@@ -1317,16 +1487,14 @@ def assign_long_calls(daily_data, all_daily_data=None):
                                         reshuffle_gap_ok = False
                                     elif gap < 3:
                                         reshuffle_gap_penalty = 1
-
                                 if not reshuffle_gap_ok:
                                     continue
 
-                                prov_wknd_lcs = provider_weekend_lc.get(provider, 0)
-                                if prov_wknd_lcs >= 2:
+                                if pstate[provider]["weekend_lc"] >= 2:
                                     continue
 
                                 reshuffle_options.append((
-                                    prov_wknd_lcs,
+                                    pstate[provider]["weekend_lc"],
                                     reshuffle_gap_penalty,
                                     wdt, wslot, occupant,
                                     wkdy_dt, wkdy_slot))
@@ -1334,60 +1502,56 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     reshuffle_options.sort()
                     for _, _, wdt, wslot, occupant, wkdy_dt, wkdy_slot in reshuffle_options:
                         assignments[wkdy_dt][wkdy_slot] = None
-                        provider_lc_count[provider] -= 1
-                        provider_double[provider] = max(0, provider_double.get(provider, 0) - 1)
+                        pstate[provider]["lc_count"] -= 1
+                        pstate[provider]["doubles"] = max(0, pstate[provider]["doubles"] - 1)
 
                         old_occupant = assignments[wdt][wslot]
                         assignments[wdt][wslot] = provider
-                        provider_weekend_lc[provider] += 1
-                        provider_lc_count[provider] += 1
+                        pstate[provider]["weekend_lc"] += 1
+                        pstate[provider]["lc_count"] += 1
 
                         if old_occupant:
-                            provider_lc_count[old_occupant] = max(0, provider_lc_count.get(old_occupant, 0) - 1)
-                            provider_weekend_lc[old_occupant] = max(0, provider_weekend_lc.get(old_occupant, 0) - 1)
+                            pstate[old_occupant]["lc_count"] = max(0, pstate[old_occupant]["lc_count"] - 1)
+                            pstate[old_occupant]["weekend_lc"] = max(0, pstate[old_occupant]["weekend_lc"] - 1)
                             if wslot == "dc1":
-                                provider_dc1_count[old_occupant] = max(0, provider_dc1_count.get(old_occupant, 0) - 1)
+                                pstate[old_occupant]["dc1_count"] = max(0, pstate[old_occupant]["dc1_count"] - 1)
                             elif wslot == "dc2":
-                                provider_dc2_count[old_occupant] = max(0, provider_dc2_count.get(old_occupant, 0) - 1)
+                                pstate[old_occupant]["dc2_count"] = max(0, pstate[old_occupant]["dc2_count"] - 1)
 
                         new_filler = find_double_filler(
                             wkdy_dt, wkdy_slot, daily_data, assignments, daily_slots,
-                            provider_lc_count, provider_weekend_lc,
-                            provider_dc1_count, provider_dc2_count,
-                            provider_day_of_week, provider_missed,
-                            provider_double, weekends_worked,
-                            provider_double_dates, all_stretches,
-                            provider_wknd_lc_stretches, flags
+                            pstate, weekends_worked, all_stretches, pstate
                         )
 
                         if new_filler and new_filler != provider:
                             assignments[wkdy_dt][wkdy_slot] = new_filler
-                            provider_lc_count[new_filler] += 1
-                            provider_double[new_filler] = provider_double.get(new_filler, 0) + 1
+                            pstate[new_filler]["lc_count"] += 1
+                            pstate[new_filler]["doubles"] += 1
                             if wkdy_slot == "dc1":
-                                provider_dc1_count[new_filler] = provider_dc1_count.get(new_filler, 0) + 1
+                                pstate[new_filler]["dc1_count"] += 1
                             elif wkdy_slot == "dc2":
-                                provider_dc2_count[new_filler] = provider_dc2_count.get(new_filler, 0) + 1
+                                pstate[new_filler]["dc2_count"] += 1
 
                             fixed = True
                             any_fixed = True
                             break
                         else:
+                            # Revert
                             assignments[wkdy_dt][wkdy_slot] = provider
-                            provider_lc_count[provider] += 1
-                            provider_double[provider] = provider_double.get(provider, 0) + 1
+                            pstate[provider]["lc_count"] += 1
+                            pstate[provider]["doubles"] += 1
 
                             assignments[wdt][wslot] = old_occupant
-                            provider_weekend_lc[provider] -= 1
-                            provider_lc_count[provider] -= 1
+                            pstate[provider]["weekend_lc"] -= 1
+                            pstate[provider]["lc_count"] -= 1
 
                             if old_occupant:
-                                provider_lc_count[old_occupant] = provider_lc_count.get(old_occupant, 0) + 1
-                                provider_weekend_lc[old_occupant] = provider_weekend_lc.get(old_occupant, 0) + 1
+                                pstate[old_occupant]["lc_count"] += 1
+                                pstate[old_occupant]["weekend_lc"] += 1
                                 if wslot == "dc1":
-                                    provider_dc1_count[old_occupant] = provider_dc1_count.get(old_occupant, 0) + 1
+                                    pstate[old_occupant]["dc1_count"] += 1
                                 elif wslot == "dc2":
-                                    provider_dc2_count[old_occupant] = provider_dc2_count.get(old_occupant, 0) + 1
+                                    pstate[old_occupant]["dc2_count"] += 1
                             continue
 
             if not any_fixed:
@@ -1396,46 +1560,33 @@ def assign_long_calls(daily_data, all_daily_data=None):
         # Count violations for this attempt
         violations = _count_two_weekday_violations(assignments)
         if violations == 0:
-            # Perfect! Use this attempt
             best_attempt = None  # signal: use current state directly
             break
 
-        # Save this attempt if it's the best so far
         attempt_state = {
             "violations": violations,
             "assignments": copy.deepcopy(assignments),
-            "lc_count": _save_defaultdict(provider_lc_count),
-            "weekend_lc": _save_defaultdict(provider_weekend_lc),
-            "dc1_count": _save_defaultdict(provider_dc1_count),
-            "dc2_count": _save_defaultdict(provider_dc2_count),
-            "day_of_week": defaultdict(list, {k: list(v) for k, v in provider_day_of_week.items()}),
-            "missed": _save_defaultdict(provider_missed),
-            "double": _save_defaultdict(provider_double),
+            "pstate": copy.deepcopy(dict(pstate)),
             "flags": list(flags),
-            "wknd_lc_stretches": copy.deepcopy(provider_wknd_lc_stretches),
         }
         if best_attempt is None or violations < best_attempt["violations"]:
             best_attempt = attempt_state
 
-    # Restore best attempt if we didn't find a perfect solution
+    # Restore best attempt if no perfect solution
     if best_attempt is not None:
         assignments = best_attempt["assignments"]
-        provider_lc_count = best_attempt["lc_count"]
-        provider_weekend_lc = best_attempt["weekend_lc"]
-        provider_dc1_count = best_attempt["dc1_count"]
-        provider_dc2_count = best_attempt["dc2_count"]
-        provider_day_of_week = best_attempt["day_of_week"]
-        provider_missed = best_attempt["missed"]
-        provider_double = best_attempt["double"]
+        pstate = defaultdict(lambda: {
+            "lc_count": 0, "weekend_lc": 0, "dc1_count": 0, "dc2_count": 0,
+            "day_of_week": [], "missed": 0, "no_lc_weeks": 0, "doubles": 0,
+            "consecutive_no_lc": 0, "wknd_lc_stretches": set(),
+        })
+        for k, v in best_attempt["pstate"].items():
+            pstate[k] = v
         flags = best_attempt["flags"]
-        provider_wknd_lc_stretches = best_attempt["wknd_lc_stretches"]
 
     # --------------------------------------------------------
     # PHASE 4: Enforce max 1 missed week per provider
     # --------------------------------------------------------
-    # Any provider with 2+ weeks worked should have at most 1 week without LC.
-    # If a provider has 2+ missed weeks, swap them into a missed week by
-    # displacing a provider who has 0 missed weeks and the most total LCs.
 
     def compute_missed_weeks(provider):
         """Count non-moonlighting real-stretch weeks with no LC for a provider."""
@@ -1456,9 +1607,7 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     missed_week_list.append(week)
         return missed_week_list
 
-    # Iterate multiple times since one swap can create new misses
     for _round in range(10):
-        # Find providers with 2+ missed weeks
         worst_providers = []
         for provider in all_providers:
             if provider in EXCLUDED_PROVIDERS:
@@ -1468,54 +1617,45 @@ def assign_long_calls(daily_data, all_daily_data=None):
                 worst_providers.append((provider, missed_weeks))
 
         if not worst_providers:
-            break  # all good
+            break
 
-        # Sort by most missed first
         worst_providers.sort(key=lambda x: -len(x[1]))
 
         swapped_any = False
         for provider, missed_weeks in worst_providers:
-            # Try to swap into one of their missed weeks
             for week in missed_weeks:
-                best_swap = None  # (dt, slot, displaced, displaced_missed, displaced_lc)
+                best_swap = None
                 best_swap_score = None
 
                 for dt in week:
                     if dt not in daily_data:
                         continue
-                    # Check provider is working this day on a source service
                     working = any(p["provider"] == provider for p in daily_data[dt])
                     if not working:
                         continue
 
-                    # Don't swap into a weekend slot if provider already has 1 weekend LC
-                    if is_weekend_or_holiday(dt) and provider_weekend_lc.get(provider, 0) >= 1:
+                    if is_weekend_or_holiday(dt) and pstate[provider]["weekend_lc"] >= 1:
                         continue
 
-                    # Check if swapping here would create a two-weekday double
-                    # in the provider's stretch
                     creates_two_weekday = False
                     prov_stretch = find_provider_stretch_for_date(provider, dt, all_stretches)
                     if prov_stretch:
-                        # Collect existing LC dates in this stretch
                         existing_lc_dates = [
                             sd for sd in prov_stretch
                             for ss in ["teaching", "dc1", "dc2"]
                             if assignments.get(sd, {}).get(ss) == provider
                         ]
 
-                        # RULE: No double if stretch has a holiday LC
                         if any(is_holiday(d) for d in existing_lc_dates) or is_holiday(dt):
                             continue
 
-                        # RULE: Prefer 3+ calendar day gap between LCs (hard min 2)
                         phase4_gap_penalty = 0
                         if existing_lc_dates:
                             min_gap = min(abs((dt - d).days) for d in existing_lc_dates)
                             if min_gap < 2:
                                 continue
                             elif min_gap < 3:
-                                phase4_gap_penalty = 1  # prefer 3+ but allow 2
+                                phase4_gap_penalty = 1
 
                         if not is_weekend_or_holiday(dt):
                             existing_weekday_lcs = sum(
@@ -1525,16 +1665,13 @@ def assign_long_calls(daily_data, all_daily_data=None):
                             if existing_weekday_lcs >= 1:
                                 creates_two_weekday = True
 
-                    # HARD FILTER: never create a two-weekday double
-                    if creates_two_weekday:
+                    if creates_two_weekday and prov_stretch and stretch_has_weekday_and_weekend(prov_stretch):
                         continue
 
                     provider_cat = get_provider_category(provider, dt, daily_data)
                     for slot in daily_slots.get(dt, []):
-                        # DC providers cannot fill teaching slots
                         if slot == "teaching" and provider_cat == "direct_care":
                             continue
-                        # Don't displace weekend pre-assignments from Phase 1.5
                         if (dt, slot) in weekend_pre_assigned:
                             continue
 
@@ -1542,47 +1679,22 @@ def assign_long_calls(daily_data, all_daily_data=None):
                         if displaced is None or displaced == provider:
                             continue
 
-                        # Don't displace someone who would then have 2+ missed
                         displaced_missed_now = len(compute_missed_weeks(displaced))
-                        displaced_lc = provider_lc_count.get(displaced, 0)
-
-                        # Only displace if they have 0 missed (they'd go to 1)
                         if displaced_missed_now > 0:
                             continue
 
-                        # Prefer: (1) 3+ gap, (2) most LCs displaced
-                        swap_score = (phase4_gap_penalty, -displaced_lc)
+                        swap_score = (phase4_gap_penalty, -pstate[displaced]["lc_count"])
                         if best_swap is None or swap_score < best_swap_score:
-                            best_swap = (dt, slot, displaced, displaced_missed_now, displaced_lc)
+                            best_swap = (dt, slot, displaced)
                             best_swap_score = swap_score
 
                 if best_swap and not best_swap_score[0]:
-                    # Only proceed if the swap doesn't create a two-weekday double
-                    # (best_swap_score[0] is creates_two_weekday flag)
-                    dt, slot, displaced, _, _ = best_swap
+                    dt, slot, displaced = best_swap
 
-                    # Undo displaced provider's stats
-                    provider_lc_count[displaced] -= 1
-                    if is_weekend_or_holiday(dt):
-                        provider_weekend_lc[displaced] -= 1
-                    if slot == "dc1":
-                        provider_dc1_count[displaced] -= 1
-                    elif slot == "dc2":
-                        provider_dc2_count[displaced] -= 1
-                    dow = dt.weekday()
-                    if dow in provider_day_of_week[displaced]:
-                        provider_day_of_week[displaced].remove(dow)
+                    _unassign_slot(displaced, dt, slot)
 
-                    # Assign the swapped-in provider
                     assignments[dt][slot] = provider
-                    provider_lc_count[provider] += 1
-                    provider_day_of_week[provider].append(dt.weekday())
-                    if is_weekend_or_holiday(dt):
-                        provider_weekend_lc[provider] += 1
-                    if slot == "dc1":
-                        provider_dc1_count[provider] += 1
-                    elif slot == "dc2":
-                        provider_dc2_count[provider] += 1
+                    _assign_slot(provider, dt, slot)
 
                     flags.append({
                         "date": dt.strftime("%m/%d/%Y"),
@@ -1592,24 +1704,22 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     })
 
                     swapped_any = True
-                    break  # fixed one missed week for this provider, re-check in next round
+                    break
 
         if not swapped_any:
-            break  # no more swaps possible
+            break
 
-    # (Phase 5 removed — weekend LC balance is now guaranteed by Phase 1.5 matching)
+    # --------------------------------------------------------
+    # STATS COMPUTATION
+    # --------------------------------------------------------
 
-    # Compute weeks worked, standalone weekends, stretches, and missed weeks per provider.
-    # These are computed from final assignments so they are always consistent.
-    # Build LC lookup for final assignments
-    lc_assigned = set()  # (date, provider) pairs with LC
+    lc_assigned = set()
     for dt, a in assignments.items():
         for slot in ["teaching", "dc1", "dc2"]:
             if a[slot]:
                 lc_assigned.add((dt, a[slot]))
 
-    # Build source-day lookup
-    source_days_set = set()  # (provider, date) pairs on source services
+    source_days_set = set()
     for dt, providers in daily_data.items():
         for p in providers:
             source_days_set.add((p["provider"], dt))
@@ -1637,7 +1747,6 @@ def assign_long_calls(daily_data, all_daily_data=None):
                     if is_moonlighting_in_stretch(provider, week, daily_data):
                         continue
                     total_weeks += 1
-                    # Check if this week has a LC in final assignments
                     has_lc = any((dt, provider) in lc_assigned for dt in week)
                     has_source = any((provider, dt) in source_days_set for dt in week)
                     if not has_lc and has_source:
@@ -1647,288 +1756,26 @@ def assign_long_calls(daily_data, all_daily_data=None):
         stretches_count[provider] = total_stretches
         no_lc_weeks_count[provider] = total_no_lc
 
-    # Build provider stats
     provider_stats = {}
     for provider in sorted(all_providers):
         if provider in EXCLUDED_PROVIDERS:
             continue
+        ps = pstate[provider]
         provider_stats[provider] = {
-            "total_long_calls": provider_lc_count.get(provider, 0),
-            "weekend_long_calls": provider_weekend_lc.get(provider, 0),
-            "dc1_count": provider_dc1_count.get(provider, 0),
-            "dc2_count": provider_dc2_count.get(provider, 0),
+            "total_long_calls": ps["lc_count"],
+            "weekend_long_calls": ps["weekend_lc"],
+            "dc1_count": ps["dc1_count"],
+            "dc2_count": ps["dc2_count"],
             "missed": no_lc_weeks_count.get(provider, 0),
-            "doubles": provider_double.get(provider, 0),
+            "doubles": ps["doubles"],
             "weekends_worked": weekends_worked.get(provider, 0),
             "weeks_worked": weeks_worked.get(provider, 0),
             "standalone_weekends": standalone_weekends_count.get(provider, 0),
             "stretches": stretches_count.get(provider, 0),
-            "days_of_week": provider_day_of_week.get(provider, []),
+            "days_of_week": ps["day_of_week"],
         }
 
     return assignments, flags, provider_stats
-
-
-def find_best_assignment(provider, eligible_dates, daily_data, assignments,
-                         daily_slots, provider_lc_count, provider_weekend_lc,
-                         provider_dc1_count, provider_dc2_count,
-                         provider_day_of_week, weekends_worked, flags):
-    """
-    Find the best (date, slot) for a provider.
-    Returns (date, slot) or None.
-    """
-    candidates = []
-    category = None
-
-    for dt in eligible_dates:
-        cat = get_provider_category(provider, dt, daily_data)
-        if cat:
-            category = cat
-
-        for slot in daily_slots.get(dt, []):
-            if assignments[dt][slot] is not None:
-                continue  # slot already filled
-
-            # Check slot compatibility
-            if slot == "teaching" and category == "direct_care":
-                # DC providers NEVER fill teaching slots.
-                # Teaching slots are reserved for teaching service providers.
-                continue
-            elif slot == "teaching" and category == "teaching":
-                priority = 0  # best match
-            elif slot in ("dc1", "dc2") and category == "teaching":
-                # Teaching overflow into DC
-                priority = 5
-            elif slot in ("dc1", "dc2") and category == "direct_care":
-                priority = 1  # good match
-            else:
-                priority = 10
-
-            # Weekend considerations — weekend slots are pre-assigned by Phase 1.5.
-            # Skip weekend slots UNLESS they're empty (Phase 1.5 didn't fill them).
-            is_wknd = is_weekend_or_holiday(dt)
-            if is_wknd:
-                continue  # Weekend slots handled by Phase 1.5 matching
-
-            # Day of week variety
-            dow = dt.weekday()
-            dow_counts = provider_day_of_week.get(provider, [])
-            same_dow_count = dow_counts.count(dow)
-            priority += same_dow_count * 3  # penalize same day of week
-
-            # DC1 vs DC2 balance
-            if slot == "dc1":
-                dc1c = provider_dc1_count.get(provider, 0)
-                dc2c = provider_dc2_count.get(provider, 0)
-                if dc1c > dc2c:
-                    priority += 2  # already has more dc1, penalize
-            elif slot == "dc2":
-                dc1c = provider_dc1_count.get(provider, 0)
-                dc2c = provider_dc2_count.get(provider, 0)
-                if dc2c > dc1c:
-                    priority += 2  # already has more dc2, penalize
-
-            candidates.append((priority, dt, slot))
-
-    if not candidates:
-        return None
-
-    # Sort by priority (lower is better), then hash tiebreaker (not date or slot name)
-    candidates.sort(key=lambda x: (x[0], tiebreak_hash(provider, x[1].strftime('%Y%m%d') + x[2])))
-    best = candidates[0]
-    return (best[1], best[2])
-
-
-def find_provider_stretch_for_date(provider, dt, all_stretches):
-    """
-    Find the stretch (list of dates) that contains dt for a given provider.
-    Returns the stretch (list of dates) or None.
-    """
-    stretches = all_stretches.get(provider, [])
-    for stretch in stretches:
-        if dt in stretch:
-            return stretch
-    return None
-
-
-def stretch_has_weekday_and_weekend(stretch):
-    """
-    Check if a stretch contains both weekday and weekend/holiday days.
-    Returns True only if the stretch has at least one weekday AND at least
-    one weekend or holiday day.
-    """
-    has_weekday = any(not is_weekend_or_holiday(d) for d in stretch)
-    has_weekend = any(is_weekend_or_holiday(d) for d in stretch)
-    return has_weekday and has_weekend
-
-
-def find_double_filler(dt, slot, daily_data, assignments, daily_slots,
-                       provider_lc_count, provider_weekend_lc,
-                       provider_dc1_count, provider_dc2_count,
-                       provider_day_of_week, provider_missed,
-                       provider_double, weekends_worked,
-                       provider_double_dates, all_stretches,
-                       provider_wknd_lc_stretches, flags):
-    """
-    Find a provider to take a double long call to fill an empty slot.
-
-    Hard rules (provider is excluded if violated):
-    1. Must have 3+ calendar days gap between the two LCs in a stretch.
-    2. No double allowed if the stretch already contains a holiday LC.
-    3. Provider's stretch must span both weekday and weekend days.
-
-    Sorting priority:
-    1. has_empty_week: prefer providers who have at least one week with no LC
-    2. split_tier: prefer weekday+weekend splits (0) over no-split (1) over same-type (2)
-    3. score: fairness score (missed priority, double penalty, total LCs)
-    """
-    if dt not in daily_data:
-        return None
-
-    is_wknd = is_weekend_or_holiday(dt)
-
-    candidates = []
-    for p in daily_data[dt]:
-        provider = p["provider"]
-        if provider in EXCLUDED_PROVIDERS:
-            continue
-        if p["moonlighting"]:
-            continue
-
-        # DC providers cannot fill teaching slots
-        if slot == "teaching" and p["category"] == "direct_care":
-            continue
-
-        # Check if already assigned today
-        already_today = False
-        for s in ["teaching", "dc1", "dc2"]:
-            if assignments[dt].get(s) == provider:
-                already_today = True
-                break
-        if already_today:
-            continue
-
-        # Provider's stretch must contain both weekday and weekend days
-        stretch = find_provider_stretch_for_date(provider, dt, all_stretches)
-        if stretch is None:
-            continue
-        if not stretch_has_weekday_and_weekend(stretch):
-            continue
-
-        # Check existing LCs in this same stretch
-        existing_lc_dates_in_stretch = []
-        for s_dt in stretch:
-            for s_slot in ["teaching", "dc1", "dc2"]:
-                if assignments.get(s_dt, {}).get(s_slot) == provider:
-                    existing_lc_dates_in_stretch.append(s_dt)
-
-        # For multi-week stretches, don't give more LCs than weeks
-        # (Phase 1.75 + Phase 2 already assigned the right number).
-        # Single-week stretches can get doubles (up to 2 LCs).
-        stretch_weeks = split_stretch_into_weeks(stretch)
-        real_weeks = [w for w in stretch_weeks
-                      if not is_moonlighting_in_stretch(provider, w, daily_data)
-                      and not (all(is_weekend_or_holiday(d) for d in w) and len(w) <= 2)]
-        num_weeks = len(real_weeks)
-        if num_weeks >= 2 and len(existing_lc_dates_in_stretch) >= num_weeks:
-            continue
-        # For any stretch, never exceed 2 LCs total
-        if len(existing_lc_dates_in_stretch) >= 2:
-            continue
-
-        # RULE 2: No double if stretch already has a holiday LC
-        has_holiday_lc = any(is_holiday(d) for d in existing_lc_dates_in_stretch)
-        if has_holiday_lc:
-            continue
-        # Also skip if the new date IS a holiday and would create a double
-        if is_holiday(dt) and existing_lc_dates_in_stretch:
-            continue
-
-        # RULE 1: Compute gap between LCs (used for scoring below)
-        min_gap = 999
-        if existing_lc_dates_in_stretch:
-            min_gap = min(abs((dt - d).days) for d in existing_lc_dates_in_stretch)
-            # Hard filter: never allow gap < 2 (no back-to-back or 1-day-apart)
-            if min_gap < 2:
-                continue
-
-        existing_has_weekday_lc = any(not is_weekend_or_holiday(d) for d in existing_lc_dates_in_stretch)
-        existing_has_weekend_lc = any(is_weekend_or_holiday(d) for d in existing_lc_dates_in_stretch)
-
-        # Determine split quality for this double:
-        # 0 = creates proper weekday+weekend split (best)
-        # 1 = no existing LC in stretch — first assignment, ok but not a split yet
-        # 2 = same-type double (weekday+weekday or weekend+weekend, worst)
-        if not existing_lc_dates_in_stretch:
-            split_tier = 1
-        elif is_wknd and existing_has_weekday_lc and not existing_has_weekend_lc:
-            split_tier = 0  # adding weekend to existing weekday = good split
-        elif not is_wknd and existing_has_weekend_lc and not existing_has_weekday_lc:
-            split_tier = 0  # adding weekday to existing weekend = good split
-        elif is_wknd and existing_has_weekend_lc:
-            split_tier = 2  # weekend+weekend = bad
-            continue  # HARD FILTER: never create two-weekend doubles
-        elif not is_wknd and existing_has_weekday_lc:
-            split_tier = 2  # weekday+weekday = bad
-            # HARD FILTER: never create a two-weekday double in a mixed stretch
-            # (this is the Check 1 rule — weekday+weekend split is required)
-            continue
-        else:
-            split_tier = 1  # mixed existing + compatible new
-
-        # Penalize gap < 3 (prefer 3+ day gaps, but allow 2-day gaps as fallback)
-        gap_penalty = 0 if min_gap >= 3 else 500
-
-        # RULE 3: Prefer providers who have at least one week with no LC.
-        # A provider who already has an LC in every week should not get a double
-        # unless no one else is available.
-        provider_stretches = all_stretches.get(provider, [])
-        all_lc_dates = set()
-        for ps in provider_stretches:
-            for ps_dt in ps:
-                for ps_slot in ["teaching", "dc1", "dc2"]:
-                    if assignments.get(ps_dt, {}).get(ps_slot) == provider:
-                        all_lc_dates.add(ps_dt)
-        found_empty_week = False
-        for ps in provider_stretches:
-            if is_standalone_weekend(ps):
-                continue
-            weeks = split_stretch_into_weeks(ps)
-            for week in weeks:
-                if not any(wd in all_lc_dates for wd in week):
-                    found_empty_week = True
-                    break
-            if found_empty_week:
-                break
-        has_empty_week = 0 if found_empty_week else 1  # 0=has empty (preferred)
-
-        # Score: prefer those who missed, then fewest doubles, then fewest total
-        missed = provider_missed.get(provider, 0)
-        doubles = provider_double.get(provider, 0)
-        total = provider_lc_count.get(provider, 0)
-
-        # Weekend LC limit — penalize heavily but allow as last resort
-        weekend_penalty = 0
-        if is_wknd and provider_weekend_lc.get(provider, 0) >= 1:
-            weekend_penalty = 1000
-
-        # Penalize providers with few weekends
-        low_weekend_penalty = 0
-        if weekends_worked.get(provider, 0) <= 1:
-            low_weekend_penalty = 200
-
-        score = (-missed * 100) + (doubles * 50) + total + weekend_penalty + low_weekend_penalty + gap_penalty
-
-        # Sort: has_empty_week first (prefer providers with empty weeks),
-        # then split_tier (prefer weekday+weekend splits),
-        # then score (fairness), then tiebreak.
-        candidates.append((has_empty_week, split_tier, score, tiebreak_hash(provider, dt.strftime('%Y%m%d')), provider))
-
-    if not candidates:
-        return None
-
-    candidates.sort()
-    return candidates[0][4]
 
 
 # ============================================================
@@ -1939,12 +1786,10 @@ def format_output_table(assignments, daily_slots, flags):
     """Format assignments as a text table with dates down the left."""
     all_dates = sorted(assignments.keys())
 
-    # Build flag lookup
     flag_lookup = defaultdict(list)
     for f in flags:
         flag_lookup[(f.get("date", ""), f.get("provider", ""))].append(f)
 
-    # Header
     lines = []
     lines.append(f"{'Date':<12} {'Day':<5} {'Teaching LC (5p-7p)':<30} {'DC LC 1 AM (7a-8a)':<30} {'DC LC 1 PM (5p-7p)':<30} {'DC LC 2 PM (5p-7p)':<30} {'Flags'}")
     lines.append("-" * 170)
@@ -1965,7 +1810,6 @@ def format_output_table(assignments, daily_slots, flags):
             dc1_am = dc1
             dc1_pm = dc1
 
-        # Collect flags for this date
         date_flags = []
         for slot_provider in [a["teaching"], a["dc1"], a["dc2"]]:
             if slot_provider:
@@ -1973,7 +1817,6 @@ def format_output_table(assignments, daily_slots, flags):
                 if key in flag_lookup:
                     for f in flag_lookup[key]:
                         date_flags.append(f"[{f['flag_type']}] {f['provider']}: {f['message']}")
-        # Check for unfilled
         key = (date_str, "UNFILLED")
         if key in flag_lookup:
             for f in flag_lookup[key]:
@@ -1981,7 +1824,6 @@ def format_output_table(assignments, daily_slots, flags):
 
         flag_str = " | ".join(date_flags) if date_flags else ""
 
-        # Mark weekends/holidays
         marker = ""
         if is_holiday(dt):
             marker = " *HOLIDAY*"
@@ -2007,7 +1849,7 @@ def format_provider_summary(provider_stats):
     for provider in sorted(provider_stats.keys()):
         s = provider_stats[provider]
         if s["total_long_calls"] == 0 and s["missed"] == 0:
-            continue  # skip providers with no involvement
+            continue
 
         days = [dow_names[d] for d in s["days_of_week"]]
         days_str = ", ".join(days) if days else ""
@@ -2081,7 +1923,7 @@ if __name__ == "__main__":
         json.dump({"assignments": json_out, "provider_stats": {p: {k: v for k, v in s.items() if k != "days_of_week"} for p, s in provider_stats.items()}, "flags": flags}, f, indent=2, default=str)
     print(f"Wrote JSON to: {json_file}")
 
-    # Also print summary stats
+    # Print summary stats
     total_slots = sum(1 for dt in assignments
                       for slot in ["teaching", "dc1", "dc2"]
                       if assignments[dt].get(slot))

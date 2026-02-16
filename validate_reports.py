@@ -14,7 +14,7 @@ from assign_longcall import (
     is_weekend_or_holiday, is_weekend, is_holiday,
     EXCLUDED_PROVIDERS, identify_stretches, is_standalone_weekend,
     split_stretch_into_weeks, is_moonlighting_in_stretch,
-    get_provider_category,
+    get_provider_category, stretch_has_weekday_and_weekend,
 )
 import assign_longcall as engine
 
@@ -24,10 +24,15 @@ def run_checks(assignments, flags, provider_stats, daily_data, all_daily_data, s
     results = []
 
     # ── Check 1: Doubles should be weekday + weekend, not two weekdays ──
+    # Only applies to MIXED stretches (both weekday and weekend days).
+    # Weekday-only stretches have no weekend option, so two weekday LCs are acceptable.
     check1_fails = []
     for provider, stretches in identify_stretches(daily_data).items():
         for stretch in stretches:
             if is_standalone_weekend(stretch):
+                continue
+            # Only flag mixed stretches — weekday-only stretches can't split
+            if not stretch_has_weekday_and_weekend(stretch):
                 continue
             lc_dates = []
             for dt in stretch:
