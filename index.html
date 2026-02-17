@@ -4,49 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hospitalist Scheduler</title>
-<script>
-// Immediately unlock if already authenticated — runs before body renders
-var D="PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj48aGVhZD48bWV0YSBjaGFyc2V0PSJVVEYtOCI+CjxtZXRhIG5hbWU9InZpZXdwb3J0IiBjb250ZW50PSJ3aWR0aD1kZXZpY2Utd2lkdGgsIGluaXRpYWwtc2NhbGU9MS4wIj4KPHRpdGxlPkJsb2NrIDMgU2NoZWR1bGUgLSBJbmRleDwvdGl0bGU+CjxzdHlsZT4KOnJvb3QgewogIC0tYmc6ICNmZmZmZmY7IC0tdGV4dDogIzFhMWExYTsgLS1oZWFkaW5nOiAjMGQ0N2ExOwogIC0tYm9yZGVyOiAjZDBkMGQwOyAtLXN0cmlwZTogI2Y1ZjdmYTsgLS1saW5rOiAjMTU2NWMwOwp9CiogeyBib3gtc2l6aW5nOiBib3JkZXItYm94OyBtYXJnaW46IDA7IHBhZGRpbmc6IDA7IH0KYm9keSB7CiAgZm9udC1mYW1pbHk6IC1hcHBsZS1zeXN0ZW0sIEJsaW5rTWFjU3lzdGVtRm9udCwgIlNlZ29lIFVJIiwgUm9ib3RvLCBzYW5zLXNlcmlmOwogIGZvbnQtc2l6ZTogMTRweDsgY29sb3I6IHZhcigtLXRleHQpOyBiYWNrZ3JvdW5kOiB2YXIoLS1iZyk7IGxpbmUtaGVpZ2h0OiAxLjU7Cn0KLmNvbnRhaW5lciB7IG1heC13aWR0aDogMTIwMHB4OyBtYXJnaW46IDAgYXV0bzsgcGFkZGluZzogMjRweCAzMnB4OyB9CmgxIHsgZm9udC1zaXplOiAyNHB4OyBjb2xvcjogdmFyKC0taGVhZGluZyk7IG1hcmdpbi1ib3R0b206IDRweDsgfQpoMiB7IGZvbnQtc2l6ZTogMThweDsgY29sb3I6IHZhcigtLWhlYWRpbmcpOyBtYXJnaW46IDI4cHggMCAxMHB4OyBib3JkZXItYm90dG9tOiAycHggc29saWQgdmFyKC0taGVhZGluZyk7IHBhZGRpbmctYm90dG9tOiA0cHg7IH0KaDMgeyBmb250LXNpemU6IDE1cHg7IGNvbG9yOiAjMzMzOyBtYXJnaW46IDE4cHggMCA4cHg7IH0KLnN1YnRpdGxlIHsgY29sb3I6ICM2NjY7IGZvbnQtc2l6ZTogMTNweDsgbWFyZ2luLWJvdHRvbTogMjBweDsgfQp0YWJsZSB7IGJvcmRlci1jb2xsYXBzZTogY29sbGFwc2U7IHdpZHRoOiAxMDAlOyBtYXJnaW4tYm90dG9tOiAxNnB4OyB9CnRoLCB0ZCB7IGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlcik7IHBhZGRpbmc6IDZweCAxMHB4OyB0ZXh0LWFsaWduOiBsZWZ0OyB9CnRoIHsgYmFja2dyb3VuZDogI2U4ZWFmNjsgZm9udC13ZWlnaHQ6IDYwMDsgZm9udC1zaXplOiAxM3B4OyB9CnRyOm50aC1jaGlsZChldmVuKSB7IGJhY2tncm91bmQ6IHZhcigtLXN0cmlwZSk7IH0KYSB7IGNvbG9yOiB2YXIoLS1saW5rKTsgdGV4dC1kZWNvcmF0aW9uOiBub25lOyB9CmE6aG92ZXIgeyB0ZXh0LWRlY29yYXRpb246IHVuZGVybGluZTsgfQoubmF2IHsgYmFja2dyb3VuZDogI2U4ZWFmNjsgcGFkZGluZzogMTBweCAyMHB4OyBtYXJnaW4tYm90dG9tOiAyMHB4OyBib3JkZXItcmFkaXVzOiA2cHg7IH0KLm5hdiBhIHsgbWFyZ2luLXJpZ2h0OiAxNnB4OyBmb250LXdlaWdodDogNTAwOyBmb250LXNpemU6IDEzcHg7IH0KLmJhZGdlIHsKICBkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHBhZGRpbmc6IDJweCA4cHg7IGJvcmRlci1yYWRpdXM6IDNweDsKICBmb250LXNpemU6IDExcHg7IGZvbnQtd2VpZ2h0OiA2MDA7IG1hcmdpbjogMXB4IDJweDsKfQouYmFkZ2Utb2sgeyBiYWNrZ3JvdW5kOiAjZThmNWU5OyBjb2xvcjogIzJlN2QzMjsgfQouYmFkZ2Utd2FybiB7IGJhY2tncm91bmQ6ICNmZmYzZTA7IGNvbG9yOiAjZTY1MTAwOyB9Ci5iYWRnZS1zaG9ydCB7IGJhY2tncm91bmQ6ICNmY2U0ZWM7IGNvbG9yOiAjYjcxYzFjOyB9Ci5jYXJkIHsgYmFja2dyb3VuZDogI2Y1ZjdmYTsgYm9yZGVyOiAxcHggc29saWQgdmFyKC0tYm9yZGVyKTsgYm9yZGVyLXJhZGl1czogOHB4OyBwYWRkaW5nOiAxNnB4OyBtYXJnaW4tYm90dG9tOiAxMnB4OyB9Ci5zdGF0cy1ncmlkIHsgZGlzcGxheTogZ3JpZDsgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOiByZXBlYXQoYXV0by1maXQsIG1pbm1heCgxNjBweCwgMWZyKSk7IGdhcDogMTJweDsgbWFyZ2luOiAxNnB4IDA7IH0KLnN0YXQtY2FyZCB7IGJhY2tncm91bmQ6ICNmNWY3ZmE7IGJvcmRlcjogMXB4IHNvbGlkIHZhcigtLWJvcmRlcik7IGJvcmRlci1yYWRpdXM6IDhweDsgcGFkZGluZzogMTJweDsgdGV4dC1hbGlnbjogY2VudGVyOyB9Ci5zdGF0LXZhbHVlIHsgZm9udC1zaXplOiAyOHB4OyBmb250LXdlaWdodDogNzAwOyBjb2xvcjogdmFyKC0taGVhZGluZyk7IH0KLnN0YXQtbGFiZWwgeyBmb250LXNpemU6IDExcHg7IGNvbG9yOiAjNjY2OyBtYXJnaW4tdG9wOiAycHg7IH0KCi52YXItY2FyZCB7CiAgYmFja2dyb3VuZDogI2Y1ZjdmYTsgYm9yZGVyOiAxcHggc29saWQgdmFyKC0tYm9yZGVyKTsgYm9yZGVyLXJhZGl1czogOHB4OwogIHBhZGRpbmc6IDE2cHggMjBweDsgbWFyZ2luLWJvdHRvbTogMTJweDsgZGlzcGxheTogZmxleDsganVzdGlmeS1jb250ZW50OiBzcGFjZS1iZXR3ZWVuOwogIGFsaWduLWl0ZW1zOiBjZW50ZXI7Cn0KLnZhci1jYXJkOmhvdmVyIHsgYmFja2dyb3VuZDogI2UzZjJmZDsgfQoudmFyLXRpdGxlIHsgZm9udC1zaXplOiAxNnB4OyBmb250LXdlaWdodDogNjAwOyBjb2xvcjogdmFyKC0taGVhZGluZyk7IH0KLnZhci1zdGF0cyB7IGZvbnQtc2l6ZTogMTJweDsgY29sb3I6ICM2NjY7IG1hcmdpbi10b3A6IDRweDsgfQoudmFyLWxpbmsgeyBmb250LXNpemU6IDE0cHg7IGZvbnQtd2VpZ2h0OiA2MDA7IH0KPC9zdHlsZT48L2hlYWQ+PGJvZHk+PGRpdiBjbGFzcz0iY29udGFpbmVyIj4KPGRpdiBjbGFzcz0ibmF2Ij4KPGEgaHJlZj0iaW5kZXguaHRtbCIgc3R5bGU9ImZvbnQtd2VpZ2h0OjcwMDtjb2xvcjojMGQ0N2ExIj5JbmRleDwvYT4KPGEgaHJlZj0icnVsZXMuaHRtbCI+UnVsZXM8L2E+CjxhIGhyZWY9ImlucHV0cy5odG1sIj5JbnB1dHM8L2E+CjxhIGhyZWY9ImJsb2NrX3NjaGVkdWxlX3JlcG9ydF92MS5odG1sIj5TY2hlZHVsZSB2MTwvYT4KPGEgaHJlZj0iYmxvY2tfc2NoZWR1bGVfcmVwb3J0X3YyLmh0bWwiPlNjaGVkdWxlIHYyPC9hPgo8YSBocmVmPSJibG9ja19zY2hlZHVsZV9yZXBvcnRfdjMuaHRtbCI+U2NoZWR1bGUgdjM8L2E+CjxhIGhyZWY9ImJsb2NrX3NjaGVkdWxlX3JlcG9ydF92NC5odG1sIj5TY2hlZHVsZSB2NDwvYT4KPGEgaHJlZj0iYmxvY2tfc2NoZWR1bGVfcmVwb3J0X3Y1Lmh0bWwiPlNjaGVkdWxlIHY1PC9hPgo8L2Rpdj4KPGgxPkJsb2NrIDMgU2NoZWR1bGUgUmVwb3J0PC9oMT4KPHAgY2xhc3M9InN1YnRpdGxlIj5NYXJjaCAwMiAmbmRhc2g7IEp1bmUgMjgsIDIwMjY8L3A+Cgo8aDI+UmVmZXJlbmNlIFBhZ2VzPC9oMj4KPGRpdiBjbGFzcz0idmFyLWNhcmQiPjxkaXY+PGRpdiBjbGFzcz0idmFyLXRpdGxlIj5TY2hlZHVsaW5nIFJ1bGVzPC9kaXY+PGRpdiBjbGFzcz0idmFyLXN0YXRzIj5BbGwgY29uc3RyYWludHMsIHBvbGljaWVzLCBhbmQgbG9naWMgdXNlZCBieSB0aGUgZW5naW5lPC9kaXY+PC9kaXY+PGEgY2xhc3M9InZhci1saW5rIiBocmVmPSJydWxlcy5odG1sIj5WaWV3IFJ1bGVzICZyYXJyOzwvYT48L2Rpdj4KPGRpdiBjbGFzcz0idmFyLWNhcmQiPjxkaXY+PGRpdiBjbGFzcz0idmFyLXRpdGxlIj5Qcm92aWRlciBJbnB1dHM8L2Rpdj48ZGl2IGNsYXNzPSJ2YXItc3RhdHMiPlByaW9yIGJsb2NrIGRhdGEsIHJlbWFpbmluZyBvYmxpZ2F0aW9ucywgc2l0ZSBlbGlnaWJpbGl0eTwvZGl2PjwvZGl2PjxhIGNsYXNzPSJ2YXItbGluayIgaHJlZj0iaW5wdXRzLmh0bWwiPlZpZXcgSW5wdXRzICZyYXJyOzwvYT48L2Rpdj4KPGgyPlNjaGVkdWxlIFZhcmlhdGlvbnM8L2gyPgo8cCBzdHlsZT0iY29sb3I6IzY2NjttYXJnaW4tYm90dG9tOjEycHgiPkVhY2ggdmFyaWF0aW9uIHVzZXMgYSBkaWZmZXJlbnQgcmFuZG9tIHNlZWQsIHByb2R1Y2luZyBhIGRpZmZlcmVudCBhc3NpZ25tZW50IHBhdHRlcm4gd2hpbGUgZm9sbG93aW5nIHRoZSBzYW1lIHJ1bGVzLjwvcD4KPGRpdiBjbGFzcz0idmFyLWNhcmQiPjxkaXY+PGRpdiBjbGFzcz0idmFyLXRpdGxlIj5WYXJpYXRpb24gMSAoc2VlZD00Mik8L2Rpdj48ZGl2IGNsYXNzPSJ2YXItc3RhdHMiPlNpdGUgZ2FwczogMTMxICZuYnNwO3wmbmJzcDsgT3ZlcmZpbGxzOiAwICZuYnNwO3wmbmJzcDsgVW5kZXItdXRpbGl6ZWQ6IDMwICZuYnNwO3wmbmJzcDsgU3RyZXRjaCBvdmVycmlkZXM6IDQwPC9kaXY+PC9kaXY+PGEgY2xhc3M9InZhci1saW5rIiBocmVmPSJibG9ja19zY2hlZHVsZV9yZXBvcnRfdjEuaHRtbCI+VmlldyBTY2hlZHVsZSAmcmFycjs8L2E+PC9kaXY+CjxkaXYgY2xhc3M9InZhci1jYXJkIj48ZGl2PjxkaXYgY2xhc3M9InZhci10aXRsZSI+VmFyaWF0aW9uIDIgKHNlZWQ9Nyk8L2Rpdj48ZGl2IGNsYXNzPSJ2YXItc3RhdHMiPlNpdGUgZ2FwczogMTM0ICZuYnNwO3wmbmJzcDsgT3ZlcmZpbGxzOiAwICZuYnNwO3wmbmJzcDsgVW5kZXItdXRpbGl6ZWQ6IDMwICZuYnNwO3wmbmJzcDsgU3RyZXRjaCBvdmVycmlkZXM6IDM0PC9kaXY+PC9kaXY+PGEgY2xhc3M9InZhci1saW5rIiBocmVmPSJibG9ja19zY2hlZHVsZV9yZXBvcnRfdjIuaHRtbCI+VmlldyBTY2hlZHVsZSAmcmFycjs8L2E+PC9kaXY+CjxkaXYgY2xhc3M9InZhci1jYXJkIj48ZGl2PjxkaXYgY2xhc3M9InZhci10aXRsZSI+VmFyaWF0aW9uIDMgKHNlZWQ9MTIzKTwvZGl2PjxkaXYgY2xhc3M9InZhci1zdGF0cyI+U2l0ZSBnYXBzOiAxMzcgJm5ic3A7fCZuYnNwOyBPdmVyZmlsbHM6IDAgJm5ic3A7fCZuYnNwOyBVbmRlci11dGlsaXplZDogMjUgJm5ic3A7fCZuYnNwOyBTdHJldGNoIG92ZXJyaWRlczogNTU8L2Rpdj48L2Rpdj48YSBjbGFzcz0idmFyLWxpbmsiIGhyZWY9ImJsb2NrX3NjaGVkdWxlX3JlcG9ydF92My5odG1sIj5WaWV3IFNjaGVkdWxlICZyYXJyOzwvYT48L2Rpdj4KPGRpdiBjbGFzcz0idmFyLWNhcmQiPjxkaXY+PGRpdiBjbGFzcz0idmFyLXRpdGxlIj5WYXJpYXRpb24gNCAoc2VlZD0yNTYpPC9kaXY+PGRpdiBjbGFzcz0idmFyLXN0YXRzIj5TaXRlIGdhcHM6IDE0NiAmbmJzcDt8Jm5ic3A7IE92ZXJmaWxsczogMCAmbmJzcDt8Jm5ic3A7IFVuZGVyLXV0aWxpemVkOiAzNiAmbmJzcDt8Jm5ic3A7IFN0cmV0Y2ggb3ZlcnJpZGVzOiA0NTwvZGl2PjwvZGl2PjxhIGNsYXNzPSJ2YXItbGluayIgaHJlZj0iYmxvY2tfc2NoZWR1bGVfcmVwb3J0X3Y0Lmh0bWwiPlZpZXcgU2NoZWR1bGUgJnJhcnI7PC9hPjwvZGl2Pgo8ZGl2IGNsYXNzPSJ2YXItY2FyZCI+PGRpdj48ZGl2IGNsYXNzPSJ2YXItdGl0bGUiPlZhcmlhdGlvbiA1IChzZWVkPTk5OSk8L2Rpdj48ZGl2IGNsYXNzPSJ2YXItc3RhdHMiPlNpdGUgZ2FwczogMTE1ICZuYnNwO3wmbmJzcDsgT3ZlcmZpbGxzOiAwICZuYnNwO3wmbmJzcDsgVW5kZXItdXRpbGl6ZWQ6IDI5ICZuYnNwO3wmbmJzcDsgU3RyZXRjaCBvdmVycmlkZXM6IDQ3PC9kaXY+PC9kaXY+PGEgY2xhc3M9InZhci1saW5rIiBocmVmPSJibG9ja19zY2hlZHVsZV9yZXBvcnRfdjUuaHRtbCI+VmlldyBTY2hlZHVsZSAmcmFycjs8L2E+PC9kaXY+CjwvZGl2PjwvYm9keT48L2h0bWw+";
-function unlock(){var c=atob(D);document.open();document.write(c);document.close()}
-if(sessionStorage.getItem("hs_auth")==="1"){unlock()}
-</script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-         background: #f5f5f5; display: flex; align-items: center;
-         justify-content: center; min-height: 100vh; }
-  .gate { background: #fff; padding: 2.5rem; border-radius: 12px;
+         background: #f5f5f5; }
+  #gate { display: flex; align-items: center; justify-content: center;
+           height: 100%; }
+  .card { background: #fff; padding: 2.5rem; border-radius: 12px;
            box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center;
            max-width: 380px; width: 90%; }
-  .gate h2 { color: #1565c0; margin-bottom: 0.5rem; }
-  .gate p { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
-  .gate input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e0e0e0;
-                 border-radius: 8px; font-size: 1rem; outline: none;
-                 transition: border-color 0.2s; }
-  .gate input:focus { border-color: #1565c0; }
-  .gate button { width: 100%; padding: 0.75rem; margin-top: 1rem;
+  .card h2 { color: #1565c0; margin-bottom: 0.5rem; }
+  .card p { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .card input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e0e0e0;
+                 border-radius: 8px; font-size: 1rem; outline: none; }
+  .card input:focus { border-color: #1565c0; }
+  .card button { width: 100%; padding: 0.75rem; margin-top: 1rem;
                   background: #1565c0; color: #fff; border: none;
-                  border-radius: 8px; font-size: 1rem; cursor: pointer;
-                  transition: background 0.2s; }
-  .gate button:hover { background: #0d47a1; }
-  .gate .error { color: #d32f2f; font-size: 0.85rem; margin-top: 0.75rem;
-                  display: none; }
+                  border-radius: 8px; font-size: 1rem; cursor: pointer; }
+  .card button:hover { background: #0d47a1; }
+  .err { color: #d32f2f; font-size: 0.85rem; margin-top: 0.75rem; display: none; }
+  #app { display: none; width: 100%; height: 100%; border: none; }
 </style>
 </head>
 <body>
-<div class="gate">
-  <h2>Hospitalist Scheduler</h2>
-  <p>Enter the password to view reports</p>
-  <form onsubmit="return checkPw()">
-    <input type="password" id="pw" placeholder="Password" autofocus>
-    <button type="submit">View Reports</button>
-  </form>
-  <div class="error" id="err">Incorrect password</div>
+<div id="gate">
+  <div class="card">
+    <h2>Hospitalist Scheduler</h2>
+    <p>Enter the password to view reports</p>
+    <form onsubmit="return checkPw()">
+      <input type="password" id="pw" placeholder="Password" autofocus>
+      <button type="submit">View Reports</button>
+    </form>
+    <div class="err" id="err">Incorrect password</div>
+  </div>
 </div>
+<iframe id="app" src="about:blank"></iframe>
 <script>
 var H="f1fe19cfb63c1f1d1443a6675559e634363e46115ac7932eb362e307b3eda7ce";
 function sha256(m){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(m)).then(function(b){return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,"0")}).join("")})}
-function checkPw(){var p=document.getElementById("pw").value;sha256(p).then(function(h){if(h===H){sessionStorage.setItem("hs_auth","1");unlock()}else{document.getElementById("err").style.display="block"}});return false}
+function showApp(){
+  document.getElementById("gate").style.display="none";
+  var f=document.getElementById("app");
+  f.style.display="block";
+  f.src="reports/index.html";
+}
+function checkPw(){
+  var p=document.getElementById("pw").value;
+  sha256(p).then(function(h){
+    if(h===H){sessionStorage.setItem("hs_auth","1");showApp()}
+    else{document.getElementById("err").style.display="block"}
+  });
+  return false;
+}
+if(sessionStorage.getItem("hs_auth")==="1"){showApp()}
 </script>
 </body>
 </html>

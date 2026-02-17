@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Block 3 Schedule - Index</title>
+<style>
+:root {
+  --bg: #ffffff; --text: #1a1a1a; --heading: #0d47a1;
+  --border: #d0d0d0; --stripe: #f5f7fa; --link: #1565c0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px; color: var(--text); background: var(--bg); line-height: 1.5;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+h1 { font-size: 24px; color: var(--heading); margin-bottom: 4px; }
+h2 { font-size: 18px; color: var(--heading); margin: 28px 0 10px; border-bottom: 2px solid var(--heading); padding-bottom: 4px; }
+h3 { font-size: 15px; color: #333; margin: 18px 0 8px; }
+.subtitle { color: #666; font-size: 13px; margin-bottom: 20px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+th { background: #e8eaf6; font-weight: 600; font-size: 13px; }
+tr:nth-child(even) { background: var(--stripe); }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.nav { background: #e8eaf6; padding: 10px 20px; margin-bottom: 20px; border-radius: 6px; }
+.nav a { margin-right: 16px; font-weight: 500; font-size: 13px; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 11px; font-weight: 600; margin: 1px 2px;
+}
+.badge-ok { background: #e8f5e9; color: #2e7d32; }
+.badge-warn { background: #fff3e0; color: #e65100; }
+.badge-short { background: #fce4ec; color: #b71c1c; }
+.card { background: #f5f7fa; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat-card { background: #f5f7fa; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--heading); }
+.stat-label { font-size: 11px; color: #666; margin-top: 2px; }
+
+.var-card {
+  background: #f5f7fa; border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px 20px; margin-bottom: 12px; display: flex; justify-content: space-between;
+  align-items: center;
+}
+.var-card:hover { background: #e3f2fd; }
+.var-title { font-size: 16px; font-weight: 600; color: var(--heading); }
+.var-stats { font-size: 12px; color: #666; margin-top: 4px; }
+.var-link { font-size: 14px; font-weight: 600; }
+</style></head><body><div class="container">
+<div class="nav">
+<a href="index.html" style="font-weight:700;color:#0d47a1">Index</a>
+<a href="rules.html">Rules</a>
+<a href="inputs.html">Inputs</a>
+<a href="block_schedule_report_v1.html">Schedule v1</a>
+<a href="block_schedule_report_v2.html">Schedule v2</a>
+<a href="block_schedule_report_v3.html">Schedule v3</a>
+<a href="block_schedule_report_v4.html">Schedule v4</a>
+<a href="block_schedule_report_v5.html">Schedule v5</a>
+</div>
+<h1>Block 3 Schedule Report</h1>
+<p class="subtitle">March 02 &ndash; June 28, 2026</p>
+
+<h2>Reference Pages</h2>
+<div class="var-card"><div><div class="var-title">Scheduling Rules</div><div class="var-stats">All constraints, policies, and logic used by the engine</div></div><a class="var-link" href="rules.html">View Rules &rarr;</a></div>
+<div class="var-card"><div><div class="var-title">Provider Inputs</div><div class="var-stats">Prior block data, remaining obligations, site eligibility</div></div><a class="var-link" href="inputs.html">View Inputs &rarr;</a></div>
+<h2>Schedule Variations</h2>
+<p style="color:#666;margin-bottom:12px">Each variation uses a different random seed, producing a different assignment pattern while following the same rules.</p>
+<div class="var-card"><div><div class="var-title">Variation 1 (seed=42)</div><div class="var-stats">Site gaps: 131 &nbsp;|&nbsp; Overfills: 0 &nbsp;|&nbsp; Under-utilized: 30 &nbsp;|&nbsp; Stretch overrides: 40</div></div><a class="var-link" href="block_schedule_report_v1.html">View Schedule &rarr;</a></div>
+<div class="var-card"><div><div class="var-title">Variation 2 (seed=7)</div><div class="var-stats">Site gaps: 134 &nbsp;|&nbsp; Overfills: 0 &nbsp;|&nbsp; Under-utilized: 30 &nbsp;|&nbsp; Stretch overrides: 34</div></div><a class="var-link" href="block_schedule_report_v2.html">View Schedule &rarr;</a></div>
+<div class="var-card"><div><div class="var-title">Variation 3 (seed=123)</div><div class="var-stats">Site gaps: 137 &nbsp;|&nbsp; Overfills: 0 &nbsp;|&nbsp; Under-utilized: 25 &nbsp;|&nbsp; Stretch overrides: 55</div></div><a class="var-link" href="block_schedule_report_v3.html">View Schedule &rarr;</a></div>
+<div class="var-card"><div><div class="var-title">Variation 4 (seed=256)</div><div class="var-stats">Site gaps: 146 &nbsp;|&nbsp; Overfills: 0 &nbsp;|&nbsp; Under-utilized: 36 &nbsp;|&nbsp; Stretch overrides: 45</div></div><a class="var-link" href="block_schedule_report_v4.html">View Schedule &rarr;</a></div>
+<div class="var-card"><div><div class="var-title">Variation 5 (seed=999)</div><div class="var-stats">Site gaps: 115 &nbsp;|&nbsp; Overfills: 0 &nbsp;|&nbsp; Under-utilized: 29 &nbsp;|&nbsp; Stretch overrides: 47</div></div><a class="var-link" href="block_schedule_report_v5.html">View Schedule &rarr;</a></div>
+</div></body></html>
