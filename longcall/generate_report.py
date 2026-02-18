@@ -22,7 +22,8 @@ from assign_longcall import (
 )
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "output")
 
 
 def esc(text):
@@ -45,7 +46,7 @@ def provider_link(name):
 
 def _load_report_password():
     """Load the report password from config.json, if set."""
-    config_file = os.path.join(SCRIPT_DIR, "config.json")
+    config_file = os.path.join(PROJECT_ROOT, "config.json")
     if os.path.exists(config_file):
         with open(config_file, 'r') as f:
             cfg = json.load(f)

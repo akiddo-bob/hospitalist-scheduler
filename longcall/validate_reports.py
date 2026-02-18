@@ -8,6 +8,7 @@ import sys
 import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
 from assign_longcall import (
     load_schedule, build_daily_data, build_all_daily_data, assign_long_calls,
@@ -274,7 +275,7 @@ def main():
 
     # Find existing report seeds to match
     import glob
-    reports_dir = os.path.join(SCRIPT_DIR, "output", "reports")
+    reports_dir = os.path.join(PROJECT_ROOT, "output", "reports")
     report_files = sorted(glob.glob(os.path.join(reports_dir, "**", "longcall_report_*.html"), recursive=True))
 
     seeds = []

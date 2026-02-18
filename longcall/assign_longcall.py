@@ -20,7 +20,8 @@ from collections import defaultdict
 # ============================================================
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.json")
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+CONFIG_FILE = os.path.join(PROJECT_ROOT, "config.json")
 
 # Load config from config.json (contains PII like excluded provider names)
 def _load_config():
@@ -53,7 +54,7 @@ DIRECT_CARE_SERVICES = _config.get("direct_care_services", [
 
 ALL_SOURCE_SERVICES = TEACHING_SERVICES + DIRECT_CARE_SERVICES
 
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "output")
 INPUT_FILE = os.path.join(OUTPUT_DIR, "all_months_schedule.json")
 
 # Seed for reproducibility

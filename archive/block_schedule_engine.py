@@ -80,7 +80,7 @@ def load_providers():
             "annual_weeks":     float(row.get("annual_weeks", 0) or 0),
             "annual_weekends":  float(row.get("annual_weekends", 0) or 0),
             "annual_nights":    float(row.get("annual_nights", 0) or 0),
-            "weeks_remaining":  parse_float(row.get("weeks_remaing", 0)),
+            "weeks_remaining":  parse_float(row.get("weeks_remaining", 0)),
             "weekends_remaining": parse_float(row.get("weekends_remaining", 0)),
             "nights_remaining": parse_float(row.get("nights_remaining", 0)),
             "pct_cooper":       parse_float(row.get("pct_cooper", 0)),

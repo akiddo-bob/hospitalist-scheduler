@@ -16,14 +16,15 @@ from collections import defaultdict
 
 # Add project root to path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+sys.path.insert(0, PROJECT_ROOT)
 from parse_schedule import parse_schedule, merge_schedules
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-INPUT_DIR = os.path.join(SCRIPT_DIR, "input")
-CONFIG_PATH = os.path.join(SCRIPT_DIR, "config.json")
+INPUT_DIR = os.path.join(PROJECT_ROOT, "input")
+CONFIG_PATH = os.path.join(PROJECT_ROOT, "config.json")
 EXCEL_PATH = os.path.join(INPUT_DIR, "Long call 2025-26.xlsx")
 
 with open(CONFIG_PATH) as f:

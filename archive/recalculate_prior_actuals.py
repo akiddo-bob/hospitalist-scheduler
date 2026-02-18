@@ -27,6 +27,23 @@ from parse_schedule import parse_schedule, merge_schedules
 INPUT_DIR = os.path.join(SCRIPT_DIR, "input")
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
 
+# ─── Name Aliases ────────────────────────────────────────────────────────────
+# Canonical mapping: Sheet/XLSX name (uppercase) -> HTML schedule name (uppercase)
+# Used by update_xlsx() and available for import by other modules.
+NAME_ALIASES = {
+    "CERCEO, ELIZABETH": "CERCEO, LISA",              # Different first name in system
+    "DHILLION, JASJIT": "DHILLON, JASJIT",            # Typo: double L
+    "DUNN JR, ERNEST CHARLES": "DUNN, E CHARLES MD",  # Suffix/format difference
+    "GORDAN, SABRINA": "GORDON, SABRINA",              # Typo: missing O
+    "OBERDORF, W. ERIC": "OBERDORF, ERIC",             # Middle initial
+    "ORATE-DIMAPILIS, CHRISTINA": "DIMAPILIS, CHRISTINA",  # Hyphenated last name
+    "RACHOIN, JEAN-SEBASTIEN": "RACHOIN, SEBASTIEN",   # First name variant
+    "TROYANOVICH, ESTEBAN": "TROYANOVICH, STEVE",      # Esteban = Steve
+    "TUDOR, VLAD": "VLAD, TUDOR",                      # First/last reversed in HTML
+    "VIJAYKUMAR, ASHWIN": "VIJAYAKUMAR, ASHVIN",       # Spelling variants
+    # LEE, GRACE — not found in HTML data (may not have worked prior blocks)
+}
+
 # Prior blocks = Jul 2025 through Feb 2026 (Blocks 1 & 2)
 PRIOR_MONTHS = [
     "Hospital Medicine Schedule, 7_1 to 7_31, 2025.html",
@@ -346,21 +363,7 @@ def update_xlsx(results):
     """Update block_schedule_input.xlsx with recalculated prior actuals."""
     import openpyxl
 
-    # Manual name aliases: XLSX name -> HTML name
-    # These handle spelling variants, reversed names, and nickname differences
-    NAME_ALIASES = {
-        "CERCEO, ELIZABETH": "CERCEO, LISA",          # Different first name in system
-        "DHILLION, JASJIT": "DHILLON, JASJIT",        # Typo: double L
-        "DUNN JR, ERNEST CHARLES": "DUNN, E. CHARLES MD",  # Suffix/format difference
-        "GORDAN, SABRINA": "GORDON, SABRINA",          # Typo: missing O
-        # LEE, GRACE — not found in HTML data (may not have worked prior blocks)
-        "OBERDORF, W. ERIC": "OBERDORF, ERIC",         # Middle initial
-        "ORATE-DIMAPILIS, CHRISTINA": "DIMAPILIS, CHRISTINA",  # Hyphenated last name
-        "RACHOIN, JEAN-SEBASTIEN": "RACHOIN, SEBASTIEN",  # First name variant
-        "TROYANOVICH, ESTEBAN": "TROYANOVICH, STEVE",  # Esteban = Steve
-        "TUDOR, VLAD": "VLAD, TUDOR",                  # First/last reversed in HTML
-        "VIJAYKUMAR, ASHWIN": "VIJAYAKUMAR, ASHVIN",   # Spelling variants
-    }
+    # Uses module-level NAME_ALIASES constant
 
     xlsx_path = os.path.join(OUTPUT_DIR, "block_schedule_input.xlsx")
     if not os.path.exists(xlsx_path):
