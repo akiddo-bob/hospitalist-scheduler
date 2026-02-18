@@ -28,15 +28,31 @@ cp config.sample.json config.json
 
 ### Config fields
 
+**Global settings:**
+
+| Field | Description |
+|-------|-------------|
+| `holidays` | All holidays recognized across the year. The engine only acts on holidays within the block dates, but tracks the full set for cross-block fairness. |
+| `excluded_providers` | Providers to skip for long call. Names must match Amion format exactly ("Last, First"). |
+| `report_password` | Optional. If set, the HTML report requires this password to view (client-side SHA-256 gate). Leave empty for no password. |
+
+**`amion` — Amion connection settings (used by `fetch_availability.py`):**
+
+| Field | Description |
+|-------|-------------|
+| `file_id` | Amion file identifier from the schedule URL. |
+| `ps` | Amion password/session parameter. |
+| `ui_prefix` | Amion UI prefix parameter. |
+| `base_url` | Amion OCS base URL. |
+
+**`longcall` — Long call engine settings:**
+
 | Field | Description |
 |-------|-------------|
 | `block_start` | First day of the scheduling block (YYYY-MM-DD). Should be a Monday. |
 | `block_end` | Last day of the block (YYYY-MM-DD). Should be a Sunday. |
-| `holidays` | All holidays recognized across the year. The engine only acts on holidays within the block dates, but tracks the full set for cross-block fairness. |
-| `excluded_providers` | Providers to skip for long call. Names must match Amion format exactly ("Last, First"). |
 | `teaching_services` | Service names that count as teaching. Must match Amion column headers exactly. |
 | `direct_care_services` | Service names that count as direct care. Must match Amion column headers exactly. |
-| `report_password` | Optional. If set, the HTML report requires this password to view (client-side SHA-256 gate). Leave empty for no password. |
 
 ### Matching service names to Amion
 

@@ -31,21 +31,23 @@ def _load_config():
     return {}
 
 _config = _load_config()
+_lc_config = _config.get("longcall", {})
 
-BLOCK_START = datetime.strptime(_config.get("block_start", "2026-03-02"), "%Y-%m-%d")
-BLOCK_END = datetime.strptime(_config.get("block_end", "2026-06-28"), "%Y-%m-%d")
-
+# Global settings
 HOLIDAYS = [
     datetime.strptime(d, "%Y-%m-%d") for d in _config.get("holidays", ["2026-05-25"])
 ]
-
 EXCLUDED_PROVIDERS = _config.get("excluded_providers", [])
 
-TEACHING_SERVICES = _config.get("teaching_services", [
+# Long call settings
+BLOCK_START = datetime.strptime(_lc_config.get("block_start", "2026-03-02"), "%Y-%m-%d")
+BLOCK_END = datetime.strptime(_lc_config.get("block_end", "2026-06-28"), "%Y-%m-%d")
+
+TEACHING_SERVICES = _lc_config.get("teaching_services", [
     "HA", "HB", "HC", "HD", "HE", "HF", "HG", "HM (Family Medicine)",
 ])
 
-DIRECT_CARE_SERVICES = _config.get("direct_care_services", [
+DIRECT_CARE_SERVICES = _lc_config.get("direct_care_services", [
     "H1", "H2", "H3", "H4", "H5", "H6", "H7",
     "H8- Pav 6 & EXAU", "H9", "H10", "H11",
     "H12- Pav 8 & Pav 9", "H13- (Obs overflow)", "H14",

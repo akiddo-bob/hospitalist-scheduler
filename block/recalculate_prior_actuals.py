@@ -14,10 +14,14 @@ Outputs:
   output/prior_actuals.xlsx  — single sheet for Google Sheet paste
 """
 
+import csv
+import io
 import json
+import math
 import os
 import re
 import sys
+import urllib.request
 from collections import defaultdict
 from datetime import datetime, date
 
@@ -27,7 +31,7 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, PROJECT_ROOT)
 
 from parse_schedule import parse_schedule, merge_schedules
-from name_match import to_canonical, clean_html_provider
+from name_match import to_canonical, normalize_name, match_provider, clean_html_provider
 
 INPUT_DIR = os.path.join(PROJECT_ROOT, "input")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "output")
@@ -72,6 +76,9 @@ def classify_service(service_name, hours):
         return "day"
     # Inspira Mannington PA — physician shift despite "PA" in name
     if "mannington pa" in sname and "app" not in sname:
+        return "day"
+    # Cape PA — physician shift, not APP (per rules doc Section 1.3)
+    if sname == "cape pa":
         return "day"
     # UM Referrals / UM Rounds — physician shifts
     if "um referral" in sname or "um rounds" in sname:
@@ -135,9 +142,10 @@ def classify_service(service_name, hours):
     if "virtua" in sname and "coverage" in sname:
         return "exclude"
 
-    # UM (standalone only — specific UM Referrals/Rounds handled above)
+    # UM — physician shift, counts as day work (per rules doc Section 1.3)
+    # UM Referrals / UM Rounds are also included (handled in overrides above)
     if sname.strip() == "um":
-        return "exclude"
+        return "day"
 
     # Consults (remaining — Hospital Medicine Consults handled above)
     if "consult" in sname:
@@ -390,8 +398,55 @@ def main():
     return results
 
 
+SHEET_ID = "1dbHUkE-pLtQJK02ig2EbU2eny33N60GQUvk4muiXW5M"
+SHEET_BASE = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
+
+
+def _fetch_sheet_provider_order():
+    """Fetch provider names from Google Sheet Providers tab to match its row order.
+    Falls back to local CSV if the fetch fails."""
+    # Try Google Sheet first
+    try:
+        url = f"{SHEET_BASE}&sheet={urllib.request.quote('Providers')}"
+        print("  Fetching provider list from Google Sheet...")
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            text = resp.read().decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+        names = []
+        for row in reader:
+            name = row.get("provider_name", "").strip()
+            if name:
+                names.append(name)
+        if names:
+            # Cache locally for offline use
+            cache_path = os.path.join(OUTPUT_DIR, "providers_sheet.csv")
+            with open(cache_path, "w", newline="") as f:
+                f.write(text)
+            print(f"  Fetched {len(names)} providers from Google Sheet (cached to providers_sheet.csv)")
+            return names
+    except Exception as e:
+        print(f"  WARNING: Could not fetch Google Sheet: {e}")
+
+    # Fall back to local CSV
+    for fname in ("providers_sheet_updated.csv", "providers_sheet.csv"):
+        csv_path = os.path.join(OUTPUT_DIR, fname)
+        if os.path.isfile(csv_path):
+            with open(csv_path, newline="") as f:
+                reader = csv.DictReader(f)
+                names = []
+                for row in reader:
+                    name = row.get("provider_name", "").strip()
+                    if name:
+                        names.append(name)
+            if names:
+                print(f"  Using local fallback: {fname} ({len(names)} providers)")
+                return names
+    return None
+
+
 def write_xlsx(results):
-    """Write prior actuals to XLSX for Google Sheet paste."""
+    """Write prior actuals to XLSX, matching Google Sheet provider order.
+    Only includes providers present in the Google Sheet."""
     try:
         import openpyxl
     except ImportError:
@@ -413,19 +468,95 @@ def write_xlsx(results):
     for col, header in enumerate(headers, 1):
         ws.cell(1, col, header)
 
-    # Data rows (sorted by provider name)
+    # Use Google Sheet order if available, otherwise fall back to alphabetical
+    sheet_names = _fetch_sheet_provider_order()
+    if sheet_names:
+        provider_order = sheet_names
+        print(f"  XLSX: matching Google Sheet order ({len(sheet_names)} providers)")
+    else:
+        provider_order = sorted(results.keys())
+        print("  XLSX: Google Sheet CSV not found, using alphabetical order")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # TEMPORARY OVERRIDE — FORCE FAIR-SHARE REMAINING FOR TEST RUN
+    # ═══════════════════════════════════════════════════════════════════════
+    # These 4 providers have lopsided prior actuals (data quality issues in
+    # Blocks 1 & 2) that would skew Block 3 scheduling.  We override their
+    # prior_weeks_worked / prior_weekends_worked so the Google Sheet computes
+    # remaining = ann − prior = ceil(ann/3)  (i.e. exactly fair-share).
+    #
+    # Formula:  prior_worked_override = annual − ceil(annual / 3)
+    #
+    # TO UNDO: Delete this _FAIR_SHARE_OVERRIDES dict and the apply block
+    #          below (search for "FAIR-SHARE OVERRIDE" in this file).
+    # ═══════════════════════════════════════════════════════════════════════
+    _FAIR_SHARE_OVERRIDES = {
+        # provider_name (canonical) → (annual_weeks, annual_weekends)
+        "GUMMADI, VEDAM":    (24, 20),   # fair-share: 8 wk, 7 we → prior: 16, 13
+        "SHKLAR, DAVID":     (17, 12),   # fair-share: 6 wk, 4 we → prior: 11, 8
+        "PATTANAIK, SAMBIT": (12, 12),   # fair-share: 4 wk, 4 we → prior: 8, 8
+        "PATEL, KAJAL":      (6,  4),    # fair-share: 2 wk, 2 we → prior: 4, 2
+    }
+
+    def _fair_share_prior(annual):
+        """Compute prior_worked needed so remaining = ceil(annual/3)."""
+        return annual - math.ceil(annual / 3)
+
+    # Pre-compute override lookup:  normalized_name → (prior_weeks, prior_weekends)
+    _override_lookup = {}
+    for oname, (ann_wk, ann_we) in _FAIR_SHARE_OVERRIDES.items():
+        _override_lookup[normalize_name(oname)] = (
+            _fair_share_prior(ann_wk),
+            _fair_share_prior(ann_we),
+        )
+    # ═══════════════════════════════════════════════════════════════════════
+
     row = 2
-    for provider in sorted(results.keys()):
-        r = results[provider]
-        ws.cell(row, 1, provider)
-        ws.cell(row, 2, r["prior_weeks"])
-        ws.cell(row, 3, r["prior_weekends"])
-        ws.cell(row, 4, r["prior_nights"])
+    matched = 0
+    missing = 0
+    overridden = 0
+    for sheet_name in provider_order:
+        # ── Check for FAIR-SHARE OVERRIDE first ──────────────────────────
+        norm_sheet = normalize_name(sheet_name)
+        if norm_sheet in _override_lookup:
+            ov_wk, ov_we = _override_lookup[norm_sheet]
+            # Look up actual nights from results (not overridden)
+            matched_key = match_provider(sheet_name, results.keys())
+            actual_nights = results[matched_key]["prior_nights"] if matched_key else 0
+            ws.cell(row, 1, sheet_name)
+            ws.cell(row, 2, ov_wk)
+            ws.cell(row, 3, ov_we)
+            ws.cell(row, 4, actual_nights)
+            overridden += 1
+            matched += 1
+            print(f"  ⚠ FAIR-SHARE OVERRIDE: {sheet_name} → "
+                  f"prior_weeks={ov_wk}, prior_weekends={ov_we}")
+            row += 1
+            continue
+
+        # ── Normal path ──────────────────────────────────────────────────
+        # Use match_provider for full alias + abbreviation resolution
+        matched_key = match_provider(sheet_name, results.keys())
+        if matched_key:
+            r = results[matched_key]
+            ws.cell(row, 1, sheet_name)
+            ws.cell(row, 2, r["prior_weeks"])
+            ws.cell(row, 3, r["prior_weekends"])
+            ws.cell(row, 4, r["prior_nights"])
+            matched += 1
+        else:
+            # Provider in sheet but not in schedule data — output zeros
+            ws.cell(row, 1, sheet_name)
+            ws.cell(row, 2, 0)
+            ws.cell(row, 3, 0)
+            ws.cell(row, 4, 0)
+            missing += 1
         row += 1
 
     xlsx_path = os.path.join(OUTPUT_DIR, "prior_actuals.xlsx")
     wb.save(xlsx_path)
-    print(f"Wrote XLSX: {xlsx_path}")
+    print(f"Wrote XLSX: {xlsx_path} ({matched} matched, {missing} not found in schedules, "
+          f"{overridden} fair-share overrides)")
 
 
 if __name__ == "__main__":

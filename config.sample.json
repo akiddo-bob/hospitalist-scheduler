@@ -1,6 +1,4 @@
 {
-  "block_start": "2026-03-02",
-  "block_end": "2026-06-28",
   "holidays": [
     "2026-01-01",
     "2026-05-25",
@@ -13,14 +11,26 @@
     "Last, First",
     "Last2, First2"
   ],
-  "teaching_services": [
-    "HA", "HB", "HC", "HD", "HE", "HF", "HG", "HM (Family Medicine)"
-  ],
-  "direct_care_services": [
-    "H1", "H2", "H3", "H4", "H5", "H6", "H7",
-    "H8- Pav 6 & EXAU", "H9", "H10", "H11",
-    "H12- Pav 8 & Pav 9", "H13- (Obs overflow)", "H14",
-    "H15", "H16", "H17", "H18"
-  ],
-  "report_password": ""
+  "report_password": "",
+
+  "amion": {
+    "file_id": "!18fd1c46hcuhatt_1",
+    "ps": "914",
+    "ui_prefix": "24*1600",
+    "base_url": "https://www.amion.com/cgi-bin/ocs"
+  },
+
+  "longcall": {
+    "block_start": "2026-03-02",
+    "block_end": "2026-06-28",
+    "teaching_services": [
+      "HA", "HB", "HC", "HD", "HE", "HF", "HG", "HM (Family Medicine)"
+    ],
+    "direct_care_services": [
+      "H1", "H2", "H3", "H4", "H5", "H6", "H7",
+      "H8- Pav 6 & EXAU", "H9", "H10", "H11",
+      "H12- Pav 8 & Pav 9", "H13- (Obs overflow)", "H14",
+      "H15", "H16", "H17", "H18"
+    ]
+  }
 }

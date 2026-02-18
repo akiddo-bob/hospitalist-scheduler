@@ -32,13 +32,13 @@ Each row is one provider. The engine reads every field listed below.
 | `provider_name` | text | "ABRAHAM, ANEY" | Primary key — matches to availability JSONs and tags |
 | `shift_type` | text | "Days", "Nights", "Hybrid" | Determines eligibility — pure "Nights" with no remaining weeks/weekends are excluded |
 | `fte` | decimal | 0.9, 1.0 | Determines holiday work requirements (see Section 4.2) |
-| `scheduler` | text | "MM", "PS/CD/NT", "AF" | Identifies which coordinator manages them; self-schedulers (own initials) should be excluded !!!careful here - we don't want to assume mathing initials is a self schedule. let's rely on the provider tags to tell us who to 'do not schedule' |
+| `scheduler` | text | "MM", "PS/CD/NT", "AF" | Identifies which coordinator manages them. Informational only — the engine does NOT infer self-schedulers from this field. Use `do_not_schedule` tag instead. |
 
 #### Annual Obligations & Remaining
 | Field | Type | Example | How the engine uses it |
 |-------|------|---------|----------------------|
-| `annual_weeks` | number | 24, 17 | Total weeks this provider owes per year — used for fair-share calculation (annual ÷ 3) !!!this is a target. |
-| `annual_weekends` | number | 23, 16 | Total weekends owed per year !!!this should be fair-share calculated too for a target|
+| `annual_weeks` | number | 24, 17 | Annual week target — used for fair-share calculation (annual ÷ 3) |
+| `annual_weekends` | number | 23, 16 | Annual weekend target — used for fair-share calculation (annual ÷ 3) |
 | `annual_nights` | number | 0, 12 | Not used by this engine (night scheduling out of scope) |
 | `prior_weeks_worked` | number | 10.4 | Informational — engine uses `weeks_remaining` directly |
 | `prior_weekends_worked` | number | 8.0 | Informational — engine uses `weekends_remaining` directly |
@@ -83,8 +83,15 @@ can be further restricted from one of those sites via the `no_elmer` or
 
 Valid holiday names: "New Year's Day", "Memorial Day", "4th of July",
 "Labor Day", "Thanksgiving", "Christmas Day". Empty means no preference.
+Every provider must work either Christmas or New Year's (see Section 4.3).
+A provider cannot have both Christmas and New Year's off.
 
-For Block 3, only **Memorial Day (May 25, 2026)** falls in range. !!!yes - but you also need to evaluate the block 1 and block 2 schedules to determine if providers have already worked their required number of holidays. if they need to work a holiday still and 5/25 is the only one left they need to be scheduled. this might raise a conflict with their request.
+For Block 3, only **Memorial Day (May 25, 2026)** falls in range. However,
+the engine must also evaluate Block 1 and Block 2 input schedules to determine
+whether each provider has already worked their required number of holidays for
+the year. If a provider still owes a holiday and Memorial Day is the only
+remaining opportunity, they must be scheduled that week — even if it conflicts
+with their holiday preference.
 
 ### Input 2: Google Sheet — Provider Tags Tab
 
@@ -114,11 +121,10 @@ tag (a provider can have multiple tags).
 | `night_constraint` | Night shift placement rule | Out of scope for current engine |
 | `note` | General note | Informational — review `rule` field |
 
-> **QUESTION FOR SCHEDULER:** Some tags like `location_restriction`,
-> `scheduling_priority`, and `swing_shift` have free-text `rule` fields that
-> need human interpretation. Should these be broken down into more specific
-> tags the engine can act on? Or should the engine ignore them and leave
-> those providers for manual adjustment? !!!you should create a list of any tags you can't understand and we will provide the context needed.
+The engine should attempt to interpret free-text `rule` fields for tags like
+`location_restriction`, `scheduling_priority`, and `swing_shift`. Any tags
+the engine cannot interpret should be collected into a list and flagged for
+manual clarification by the scheduling team.
 
 ### Input 3: Google Sheet — Sites Tab
 
@@ -148,9 +154,10 @@ Defines how many providers are needed at each site for each day type.
 | Virtua Mt Holly | 2 | 2 | |
 | **TOTAL** | **63** | **54** | **1** |
 
-> **QUESTION FOR SCHEDULER:** The Sites tab includes a "swing" day type for
-> Cape (1 provider needed). Should the engine schedule swing shifts, or is
-> that handled separately?
+The engine does **not** schedule swing shifts. However, for providers tagged
+`swing_shift`, the engine must reserve capacity for their expected swing weeks
+by leaving that number of weeks unscheduled. This allows swing shifts to be
+manually added later without over-scheduling the provider.
 
 ### Input 4: Provider Availability (Individual Schedule JSONs)
 
@@ -274,8 +281,7 @@ The engine mirrors what a manual scheduler does, in a defined sequence of phases
 ### Phase 1: Setup
 - Load all inputs (Providers, Tags, Sites, Availability)
 - Exclude ineligible providers:
-  - Tagged `do_not_schedule`
-  - Self-schedulers
+  - Tagged `do_not_schedule` (sole mechanism for exclusion — engine does not infer self-schedulers)
   - Pure nocturnists (`shift_type = "Nights"` with no remaining weeks/weekends)
   - Providers with `weeks_remaining <= 0` AND `weekends_remaining <= 0`
 - Calculate fair-share targets: `ceil(annual_weeks / 3)` and `ceil(annual_weekends / 3)`
@@ -288,7 +294,9 @@ The engine mirrors what a manual scheduler does, in a defined sequence of phases
   - Find eligible providers (available, has capacity, site % > 0, not over consecutive limit)
   - Score candidates (spacing, site allocation match, stretch pairing)
   - Place the best candidate
-- Cap each provider at their fair-share target during this pass
+- Cap each provider at `floor(weeks_remaining)` — never over-schedule. If a
+  provider has a fractional week remaining, leave it unscheduled. It is easier
+  to fill in additional shifts later than to take assignments away.
 - Pair weekends with the same site as the adjacent weekday period
 
 ### Phase 3: Fill Cooper
@@ -305,8 +313,11 @@ The engine mirrors what a manual scheduler does, in a defined sequence of phases
 
 ### Phase 5: Forced Fill / Rebalancing
 - Fill remaining gaps by relaxing soft constraints progressively:
-  1. Allow 3 consecutive weeks (normally max 2)
-  2. Allow providers to exceed their target site allocation slightly
+  1. Allow up to 12 consecutive days (Week+WE+Week at same site)
+  2. Allow providers to exceed their target site allocation percentages
+- **Hard cap remains**: a provider can never exceed `floor(weeks_remaining)`
+  weeks or `floor(weekends_remaining)` weekends. Site percentages can shift
+  but total count of weeks/weekends assigned must never exceed remaining.
 - Track all constraint relaxations in the output for manual review
 
 ### Phase 6: Output & Review
@@ -352,9 +363,8 @@ Exact dates shift slightly each year to land on Monday starts and Sunday ends.
 The engine should accept cycle and block as configuration inputs rather than
 hardcoding dates. Each run targets one specific block within one cycle.
 
-> **QUESTION FOR SCHEDULER:** How are the exact block boundary dates determined
-> each year? Is it always "last Monday in June" for the cycle start? Or is
-> there a different convention?
+Block boundary dates are manually defined each year — there is no fixed
+convention like "last Monday in June." The engine accepts these as configuration.
 
 ### 1.2 Scheduling Unit
 - **Week** = Monday through Friday (5 weekdays)
@@ -373,7 +383,7 @@ Any service matching these patterns is **excluded** from prior work counts:
 
 | Rule | Pattern | Examples |
 |------|---------|----------|
-| APP | Service name contains `APP`, `APN`, or `PA` (as role) | APP Admitter 1, H14 APP, Mullica Hill APN 1, Cape PA |
+| APP | Service name contains `APP`, `APN`, or `PA` (as role), **except** Cape PA and Mannington PA (physician shifts — see Include Overrides below) | APP Admitter 1, H14 APP, Mullica Hill APN 1 |
 | Night Coverage | Name starts with `Night Coverage` or `NIGHT COVERAGE` | NIGHT COVERAGE 1 (MAH H9…), Night Coverage 2 5p-5a H4 |
 | Resident | Name contains `Resident` | FM Resident Admitter, Night- Resident Direct Care Admitter |
 | Hospitalist Fellow | Name contains `Fellow` | Hospitalist Fellow |
@@ -387,7 +397,7 @@ Any service matching these patterns is **excluded** from prior work counts:
 | Long Call | Name contains `Long Call` | Long Call H1 7a-8a, Teaching Long Call, Mullica Hill Long Call |
 | Direct Care Long Call | Name starts with `Direct Care Long Call` | Direct Care Long Call 1 AM, Direct Care Long Call 2 PM |
 | Virtua Coverage | Name contains `Virtua` AND `Coverage` | Virtua Marlton PM Coverage, Virtua Mt Holly AM Coverage |
-| UM | Name is exactly `UM` (standalone) | UM |
+| ~~UM~~ | ~~Name is exactly `UM` (standalone)~~ | **REMOVED** — UM is a physician shift and is now **included** as day work |
 | Consults | Name contains `Consult` (except Hospital Medicine Consults) | Night Direct Care Admitter 2 (Consult), Woodbury Consult Physician |
 
 #### Full Excluded Service List
@@ -407,7 +417,6 @@ Cape Day APP 1
 Cape LTC-SAR  On Call APP overnight
 Cape LTC-SAR Day APP
 Cape LTC-SAR On call APP
-Cape PA
 Cape RMD On-Call
 Cape Site Director On-Call
 Cape Swing APP
@@ -510,7 +519,6 @@ Night Coverage 4 7p-7a H3
 Night Direct Care Admitter 2 (Consult)
 Night- Resident Direct Care Admitter
 Teaching Long Call
-UM
 Vineland Admin- Shift 1
 Vineland CDU-APP
 Vineland Day-APP (extra)
@@ -562,6 +570,7 @@ Cape Extra
 Cape LTC-SAR on call Physician
 Cape MAH
 Cape Nocturnist 1
+Cape PA
 Cape Swing Shift 1
 Clinical Care Physician Advisor (CCPA)
 Elmer 1
@@ -622,6 +631,7 @@ Mullica Hill Z (extra)
 Night Direct Care Admitter 1
 SAH
 Teaching Admitting Hospitalist (TAH)
+UM
 Vineland A
 Vineland B
 Vineland C
@@ -654,6 +664,18 @@ Virtua Mount Holly Nights
 Virtua Voorhees Nights
 Virtua-Willingboro Nights
 ```
+
+#### Include Overrides (match exclusion patterns but are physician shifts)
+
+These services match exclusion patterns (e.g., contain "PA") but are physician
+shifts and must be **included**:
+
+- **Cape PA** — physician shift at Cape, not an APP role
+- **Inspira- Mannington PA** — physician shift, not APP
+- **Clinical Care Physician Advisor (CCPA)** — contains "PA" but is physician
+- **UM** — standalone "UM" is a physician shift (day work)
+- **UM Referrals / UM Rounds** variants — physician shifts
+- **Hospital Medicine Consults** — physician shift (other consult services excluded)
 
 #### Classification Notes
 - **Moonlighting** shifts are always excluded regardless of service name
@@ -710,15 +732,16 @@ These constraints are absolute. The engine must never break them.
 - `no_vineland` → provider cannot be assigned to Vineland
 
 ### 2.4 Capacity Limits
-- A provider cannot be scheduled for more weeks than `ceil(weeks_remaining)`
-- A provider cannot be scheduled for more weekends than `ceil(weekends_remaining)`
+- A provider cannot be scheduled for more weeks than `floor(weeks_remaining)`
+- A provider cannot be scheduled for more weekends than `floor(weekends_remaining)`
+- Never over-schedule — fractional remaining values are rounded **down**
 
 ### 2.5 Week + Weekend Pairing
 - When a provider works a weekday period, their weekend should be at the **same site**
 - This creates a 7-day stretch (Mon–Sun) at one location
-
-> **QUESTION FOR SCHEDULER:** Is this an absolute rule? Can a provider ever
-> work weekdays at one site and the adjacent weekend at a different site?
+- Splitting weekdays and the adjacent weekend across different sites is allowed
+  only if the provider has allocation at both sites **and** all other options
+  have been exhausted. This is a last resort, not a normal pattern.
 
 ### 2.6 Nocturnists Excluded
 - Pure night providers (`shift_type = "Nights"` with no remaining weeks/weekends) are excluded
@@ -726,18 +749,9 @@ These constraints are absolute. The engine must never break them.
 
 ### 2.7 Excluded Providers
 - Providers tagged `do_not_schedule` are excluded from automated scheduling
-- The tag is the sole mechanism for exclusion (engine does not infer from
-  other fields)
-
-As of the process definition document, the following are excluded:
-Rachel Nash, Alka Farmer, Samer Badr, Deepa Velayadikot,
-Sebastien Rachoin, Lisa Cerceo, Snehal Ghandi, Alisa Peet
-
-Plus leave-based exclusions:
-Gummadi (leave), Patel Kajal (FMLA), Zheng Angela (maternity leave)
-
-> **QUESTION FOR SCHEDULER:** Is this list current? The user added 6 new
-> do_not_schedule tags on Feb 17, 2026 — are they reflected here?
+- The `do_not_schedule` tag is the **sole mechanism** for exclusion — the engine
+  does not infer self-schedulers from the `scheduler` field or any other field
+- The authoritative list lives in the Google Sheet "Provider Tags" tab
 
 ---
 
@@ -749,16 +763,17 @@ Gummadi (leave), Patel Kajal (FMLA), Zheng Angela (maternity leave)
   (e.g., 26 weeks/year → 9 + 9 + 8 across three blocks)
 - Vary which block gets the short count across the provider group — don't
   give every provider their short block in the same block
-- Pass 1 caps at `ceil(annual / 3)` — fair share
+- Pass 1 caps at fair-share target, bounded by `floor(remaining)`
 - Pass 2 lifts the cap for behind-pace providers
 
 ### 3.2 Consecutive Stretch Limits
-- **Preferred:** 1 week (7 days — Mon through Sun at same site)
-- **Acceptable:** 2 consecutive weeks (14 days)
-- **Maximum in forced fill:** 3 consecutive weeks (21 days)
-- **Never allowed:** 4+ consecutive weeks
-
-> **QUESTION FOR SCHEDULER:** Is 2 consecutive weeks the right normal limit?
+- **Normal:** Up to 7 consecutive days (Mon–Sun, Mon–Fri, or Sat–Fri).
+  A stretch does not always include a weekend — can be just M–F.
+- **Maximum:** 12 consecutive days (Week + WE + Week at same site). This is
+  the absolute maximum consecutive days on. Never exceeded.
+- **Never allowed:** More than 12 consecutive days on
+- **21-day window rule:** In any 21-day window, a provider works at most 17
+  days. The worst case pattern is 12 on, 2 off, 5 on.
 
 ### 3.3 Even Spacing
 - Provider assignments should be spread evenly across the block
@@ -771,9 +786,7 @@ Gummadi (leave), Patel Kajal (FMLA), Zheng Angela (maternity leave)
 ### 3.5 Cooper Fills Last
 - Non-Cooper sites filled first (smaller, fixed staffing needs)
 - Cooper absorbs remaining capacity
-- Cooper gaps are expected — moonlighters/per diem fill them
-
-> **QUESTION FOR SCHEDULER:** How are Cooper gaps filled in practice?
+- Cooper gaps are expected — filled by moonlighting (manual entry)
 
 ### 3.6 Site Gap Tolerance
 - Mullica Hill and Vineland: can leave up to 1 unfilled slot per day
@@ -781,9 +794,10 @@ Gummadi (leave), Patel Kajal (FMLA), Zheng Angela (maternity leave)
 - Cooper: gaps expected and acceptable
 
 ### 3.7 Minimum Gap Between Stretches
-- There should be days off between consecutive work stretches
-
-> **QUESTION FOR SCHEDULER:** What is the minimum acceptable gap?
+- The typical pattern is **7 days on, 7 days off** (14 shifts per 21 days)
+- In any 21-day window: max 17 days worked, max 12 consecutive
+- There is no fixed minimum gap in days, but the 21-day window rule
+  effectively prevents back-to-back stretches without rest
 
 ### 3.8 Stretch Flexibility
 - A stretch can start on a weekend and continue into the following week
@@ -817,8 +831,8 @@ as one of their required holidays (not both, not neither — one or the other).
 ### 4.4 Holiday Preferences
 - Providers submit 2 preferred holidays via `holiday_1` / `holiday_2`
 - These are the holidays they prefer to have OFF
-- If a provider lists a holiday, they should not be scheduled during the week
-  containing that holiday
+- A holiday preference blocks the **entire week** containing that holiday,
+  not just the holiday day itself
 
 ### 4.5 Block 3 Holidays
 | Holiday | Date | Week (Mon–Fri) |
@@ -830,13 +844,10 @@ All other holidays fall outside Block 3:
 - 4th of July → Jul 4, 2026 (after Block 3)
 - Labor Day, Thanksgiving, Christmas → next cycle
 
-> **QUESTION FOR SCHEDULER:** Does a holiday preference block the whole week
-> or just the holiday day itself?
-
-> **QUESTION FOR SCHEDULER:** Since there are 6 holidays spread across 3
-> blocks (~2 per block), how do you track which holidays a provider has already
-> worked in Blocks 1 & 2 to know what they still owe in Block 3? Is this
-> tracked in the Google Sheet?
+To determine holiday obligations remaining for Block 3, the engine must check
+the Block 1 and Block 2 input schedules (Amion HTML files) to see which
+holidays each provider already worked. As history accumulates across cycles,
+this will eventually be tracked systematically.
 
 ---
 
@@ -844,20 +855,15 @@ All other holidays fall outside Block 3:
 
 ### 5.1 Glenn Newell — Consults Only, Mon–Thu
 - Available Monday through Thursday only (Friday blank)
-
-> **QUESTION FOR SCHEDULER:** Should we assign him full weeks and note Friday
-> is blank, or only assign 4-day weeks?
+- For bucketing and audit purposes, count his assignments as full weeks
 
 ### 5.2 Haroldson & McMillian — Never Same Week/Weekend
-- Katie Haroldson and Tyler McMillian must never be scheduled at the same
-  site during the same week or weekend
-
-> **QUESTION FOR SCHEDULER:** Same site same week, or same week at any site?
+- Katie Haroldson and Tyler McMillian must never be scheduled during the same
+  week or weekend at **any site** (not just the same site)
 
 ### 5.3 Paul Stone — Non-Teaching Only, Never MAH
-- Service-level constraint — may not apply until service assignment phase
-
-> **QUESTION FOR SCHEDULER:** Any site-level restrictions, or only service-level?
+- Service-level constraint only — deferred to service assignment phase
+- No site-level restrictions for block scheduling
 
 ---
 
@@ -898,34 +904,40 @@ availability, and site director decisions.
 - `weeks_remaining` / `weekends_remaining` carry forward ALL deficit from
   Blocks 1 & 2, potentially overloading Block 3
 - 55 providers have >40% of annual remaining (fair share = 33%)
-- Some show >70% remaining — likely leave or counting errors
+- Providers with >70% remaining should be investigated before scheduling —
+  likely leave or counting errors
 
 ### 7.2 Missing Dates in Prior Actuals
 - June 30, 2025 (Block 1 start) missing from calculation
 - March 1, 2026 (Block 2 end) missing from calculation
 
-### 7.3 Service Classification Under Review
-- 175 excluded, 107 included services — correctness pending review
+### 7.3 Service Classification — Resolved
+- Cape PA and UM reclassified from excluded to included (Feb 2026)
+- 164 excluded, 98 day, 16 night, 4 swing services in current classification
+
+### 7.4 Fair-Share Overrides (Temporary — Block 3 Test Run)
+
+Four providers have lopsided prior actuals from Blocks 1 & 2 (data quality
+issues — missing shifts, Amion inconsistencies) that would produce unreasonable
+remaining values and skew Block 3 scheduling. Their `prior_weeks_worked` and
+`prior_weekends_worked` are overridden in `block/recalculate_prior_actuals.py`
+so the Google Sheet computes remaining = `ceil(annual / 3)` (exactly fair-share).
+
+| Provider | Annual WK/WE | Actual Prior WK/WE | Override Prior WK/WE | Resulting Remaining (fair-share) |
+|---|---|---|---|---|
+| GUMMADI, VEDAM | 24 / 20 | 7.8 / 1.0 | 16 / 13 | 8 / 7 |
+| SHKLAR, DAVID | 17 / 12 | 11.8 / 1.0 | 11 / 8 | 6 / 4 |
+| PATTANAIK, SAMBIT | 12 / 12 | 3.0 / 0.5 | 8 / 8 | 4 / 4 |
+| PATEL, KAJAL | 6 / 4 | 1.0 / 0.0 | 4 / 2 | 2 / 2 |
+
+**Formula:** `prior_worked_override = annual − ceil(annual / 3)`
+
+**To undo:** Search `recalculate_prior_actuals.py` for `FAIR-SHARE OVERRIDE`
+and delete the `_FAIR_SHARE_OVERRIDES` dict and associated apply block.
 
 ---
 
 ## Section 8: Open Questions
 
-| # | Question | Section |
-|---|----------|---------|
-| Q1 | Should engine act on free-text tags (location_restriction, swing_shift, etc.) or ignore them for manual adjustment? | Input 2 |
-| Q2 | Should the engine schedule Cape swing shifts? | Input 3 |
-| Q3 | Is week + weekend pairing at the same site absolute? | 2.5 |
-| Q4 | How should self-schedulers be identified? | 2.7 |
-| Q5 | Is 2 consecutive weeks the right normal limit? | 3.2 |
-| Q6 | How are Cooper gaps filled in practice? | 3.5 |
-| Q7 | What is the minimum gap between stretches? | 3.6 |
-| Q8 | Does a holiday preference block the whole week or just the day? | 4.1 |
-| Q9 | Glenn Newell — full week or 4-day week? | 5.1 |
-| Q10 | Haroldson & McMillian — same site or same week restriction? | 5.2 |
-| Q11 | Paul Stone — any site-level restrictions? | 5.3 |
-| Q12 | Are the site staffing numbers in the Google Sheet current? | Input 3 |
-| Q13 | Should providers with >70% remaining be investigated before scheduling? | 7.1 |
-| Q14 | How are exact block boundary dates determined each year? | 1.1 |
-| Q15 | How are holidays worked in Blocks 1 & 2 tracked so we know what's owed in Block 3? | 4.2 |
-| Q16 | Is the do_not_schedule list current after the Feb 17 additions? | 2.7 |
+All previously open questions (Q1–Q16) have been resolved and incorporated
+into the relevant sections above. No open questions remain.

@@ -30,8 +30,9 @@ EXCEL_PATH = os.path.join(INPUT_DIR, "Long call 2025-26.xlsx")
 with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
-TEACHING_SERVICES = set(CONFIG["teaching_services"])
-DC_SERVICES = set(CONFIG["direct_care_services"])
+_lc_config = CONFIG.get("longcall", {})
+TEACHING_SERVICES = set(_lc_config["teaching_services"])
+DC_SERVICES = set(_lc_config["direct_care_services"])
 SOURCE_SERVICES = TEACHING_SERVICES | DC_SERVICES
 
 # Holiday dates (from config + known holidays for all blocks)
