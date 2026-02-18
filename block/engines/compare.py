@@ -6,8 +6,8 @@ Reads JSON result files from different engine runs and produces a
 side-by-side comparison of key metrics.
 
 Usage:
-    python -m block.engines.compare output/block_schedule_v1_seed42.json output/block_schedule_v1_seed7.json
-    python -m block.engines.compare output/v1/seed42.json output/v2/seed42.json
+    python -m block.engines.compare output/v1/schedule_seed42.json output/v1/schedule_seed7.json
+    python -m block.engines.compare output/v1/schedule_seed42.json output/v2/schedule_seed42.json
 """
 
 import json

@@ -80,10 +80,29 @@ Reports are written to `output/reports/{block_start}_{block_end}/`.
 # Generate 5 block schedule variations
 .venv/bin/python3 generate_block_report.py
 
-# Output: output/block_schedule_report_v1.html through v5.html
+# Output: output/v1/report_1.html through report_5.html (engine v1)
+#         output/v2/report_1.html through report_5.html (engine v2)
 #         output/index.html (navigation page)
 #         output/inputs.html (configuration snapshot)
 #         output/rules.html (rules reference)
+```
+
+## Quick Start: Block 3 Validation
+
+Validate the manually-created Amion Block 3 schedule against all scheduling rules.
+See [Block 3 Validation docs](block3-validation.md) for full details on what each check does.
+
+```bash
+# Generate the HTML validation report (self-contained, open in any browser)
+.venv/bin/python3 -m analysis.generate_block3_report
+# Output: output/block3_validation_report.html
+
+# Console-only validation (no HTML)
+.venv/bin/python3 -m analysis.validate_block3
+
+# Compare Block 3 actuals against annual targets (Excel output)
+.venv/bin/python3 -m analysis.compare_block3_actuals
+# Output: output/block3_actuals.xlsx
 ```
 
 ## Quick Start: Deploy to GitHub Pages
@@ -103,30 +122,35 @@ Reports are published to `https://akiddo-bob.github.io/hospitalist-scheduler/` w
 ```
 hospitalist-scheduler/
 ├── input/                          # Input data (not tracked in git)
-│   ├── *.html                      # Monthly Amion schedule exports
+│   ├── monthlySchedules/           # Monthly Amion HTML exports (Mar-Jun 2026)
 │   ├── Long call 2025-26.xlsx      # Manual LC data (ground truth)
 │   ├── Schedule Book*.xlsx         # Scheduler workspace
 │   └── individualSchedules/        # Provider availability JSONs
 ├── output/                         # Generated output (not tracked in git)
-│   ├── all_months_schedule.json    # Consolidated parsed schedule
-│   ├── longcall_assignments.*      # LC assignments (JSON + TXT)
-│   ├── block_schedule_report_*.html # Block schedule variations
-│   ├── index.html                  # Navigation page
-│   ├── inputs.html                 # Input parameters snapshot
-│   ├── rules.html                  # Rules reference
-│   └── reports/                    # LC report variations
-├── docs/                           # This documentation
+│   ├── block3_validation_report.html  # Block 3 validation report
+│   ├── block3_actuals.xlsx         # Block 3 actuals comparison
+│   ├── prior_actuals.json          # Blocks 1+2 actuals (for capacity check)
+│   ├── providers_sheet.csv         # Provider data snapshot
+│   └── ...                         # Other reports and data
+├── analysis/                       # Block 3 validation tools
+│   ├── validate_block3.py          # 12-check validation engine
+│   ├── generate_block3_report.py   # HTML report generator
+│   └── compare_block3_actuals.py   # Actuals vs targets comparison
+├── block/                          # Block scheduling engines
+│   ├── engines/shared/loader.py    # Shared data loading (Google Sheets)
+│   └── recalculate_prior_actuals.py  # Prior block actuals calculator
+├── longcall/                       # Long call engine
+│   ├── assign_longcall.py          # LC assignment engine
+│   ├── generate_report.py          # LC HTML report generator
+│   └── validate_reports.py         # 14-check LC validation suite
+├── docs/                           # Documentation
+│   ├── block-scheduling-rules.md   # Source of truth for block rules
+│   ├── block3-validation.md        # How the validation system works
+│   └── ...                         # Other docs
+├── parse_schedule.py               # Shared Amion HTML parser
+├── name_match.py                   # Provider name matching
+├── fetch_availability.py           # Amion availability fetcher
 ├── config.json                     # Configuration (git-crypt encrypted)
-├── config.sample.json              # Config template
-├── assign_longcall.py              # LC assignment engine
-├── generate_report.py              # LC HTML report generator
-├── validate_reports.py             # 14-check validation suite
-├── parse_schedule.py               # Amion HTML parser
-├── block_schedule_engine.py        # Block schedule generator
-├── generate_block_report.py        # Block schedule HTML reports
-├── recalculate_prior_actuals.py    # Prior blocks analyzer
-├── analyze_manual_lc.py            # Manual LC analysis tool
-├── debug_analyze.py                # Debugging & analysis
 ├── deploy_pages.sh                 # GitHub Pages deployment
 └── .venv/                          # Python virtual environment
 ```

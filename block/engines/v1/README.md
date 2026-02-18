@@ -84,11 +84,11 @@ python -m block.engines.v1.run --output-dir ./output/v1
 ## Output
 
 Each run produces:
-- `block_schedule_v1_seed{N}.json` — per-variation JSON results
+- `schedule_seed{N}.json` — per-variation JSON results
 - `index.html` — overview with variation cards
 - `rules.html` — scheduling rules reference
 - `inputs.html` — provider inputs summary
-- `block_schedule_report_v1_{N}.html` — per-variation interactive report
+- `report_{N}.html` — per-variation interactive report
 
 ### Report Tabs
 1. **Calendar** — monthly grid with site columns, provider links, site filter buttons

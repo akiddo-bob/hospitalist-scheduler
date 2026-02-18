@@ -158,7 +158,7 @@ def _nav_bar(active_page, num_variations):
     """Generate navigation bar HTML."""
     pages = [("index.html", "Index"), ("rules.html", "Rules"), ("inputs.html", "Inputs")]
     for i in range(1, num_variations + 1):
-        pages.append((f"block_schedule_report_v1_{i}.html", f"Schedule v{i}"))
+        pages.append((f"report_{i}.html", f"Schedule v{i}"))
 
     links = []
     for href, label in pages:
@@ -211,7 +211,7 @@ def _generate_index(all_results, output_dir):
         h.append(f"""<div class="var-card"><div>
 <div class="var-title">Variation {i} (seed={s['seed']})</div>
 <div class="var-stats">Site gaps: {s['total_site_gaps']} &nbsp;|&nbsp; Overfills: {s['total_overfills']} &nbsp;|&nbsp; Under-utilized: {s['total_under_utilized']} &nbsp;|&nbsp; Stretch overrides: {s['stretch_overrides']}</div>
-</div><a class="var-link" href="block_schedule_report_v1_{i}.html">View Schedule &rarr;</a></div>""")
+</div><a class="var-link" href="report_{i}.html">View Schedule &rarr;</a></div>""")
 
     h.append("</div></body></html>")
 
@@ -457,7 +457,7 @@ def _generate_schedule_report(results, variation_num, output_dir, num_variations
     block_end = datetime.strptime(block_end_str, "%Y-%m-%d")
 
     all_sites = sorted(site_fill.keys())
-    filename = f"block_schedule_report_v1_{variation_num}.html"
+    filename = f"report_{variation_num}.html"
 
     # Load full availability for mini calendars
     avail_all = _load_full_availability()

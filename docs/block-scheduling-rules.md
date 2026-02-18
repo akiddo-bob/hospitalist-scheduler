@@ -782,6 +782,14 @@ These constraints are absolute. The engine must never break them.
 ### 3.4 Site Allocation Match
 - Providers should be assigned to sites proportional to their site percentages
 - Some flexibility (±5-10%) is expected
+- **Site grouping for distribution checks**: Percentage columns cover site *groups*, not individual sites. The distribution check must aggregate days across all sites in a group before comparing against the target:
+  - `pct_cooper` → Cooper (single site)
+  - `pct_inspira_veb` → Vineland + Elmer combined
+  - `pct_inspira_mhw` → Mullica Hill (single site)
+  - `pct_mannington` → Mannington (single site)
+  - `pct_virtua` → Virtua Voorhees + Virtua Marlton + Virtua Willingboro + Virtua Mt Holly combined
+  - `pct_cape` → Cape (single site)
+- Example: A provider with `pct_virtua = 1.0` who works 12 days at Virtua Willingboro and 37 days at Virtua Voorhees has 100% Virtua — that's on target, not a violation
 
 ### 3.5 Cooper Fills Last
 - Non-Cooper sites filled first (smaller, fixed staffing needs)

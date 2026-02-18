@@ -5,6 +5,7 @@
 | Document | Description |
 |----------|-------------|
 | [Block Scheduling Rules](block-scheduling-rules.md) | **Source of truth** — all rules, inputs, process, and open questions |
+| [Block 3 Validation](block3-validation.md) | How the 12-check validation works, what each check means, and how to read the report |
 
 ## Long Call (working engine)
 

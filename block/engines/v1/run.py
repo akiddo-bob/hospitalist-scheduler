@@ -32,7 +32,7 @@ BLOCK_END   = datetime(2026, 6, 28)  # Sunday
 
 DEFAULT_SEEDS = [42, 7, 123, 256, 999]
 
-OUTPUT_DIR = os.path.join(_PROJECT_ROOT, "output")
+OUTPUT_DIR = os.path.join(_PROJECT_ROOT, "output", "v1")
 
 
 def main():
@@ -54,7 +54,7 @@ def main():
         all_results.append(results)
 
         # Save per-variation JSON
-        json_path = os.path.join(args.output_dir, f"block_schedule_v1_seed{seed}.json")
+        json_path = os.path.join(args.output_dir, f"schedule_seed{seed}.json")
         with open(json_path, "w") as f:
             json.dump(results, f, indent=2, default=str)
         print(f"  Saved: {json_path}")
