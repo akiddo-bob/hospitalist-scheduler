@@ -1,0 +1,2994 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Block 3 Schedule — V3 Inputs</title>
+<style>
+:root {
+  --bg: #ffffff; --text: #1a1a1a; --heading: #0d47a1;
+  --border: #d0d0d0; --stripe: #f5f7fa; --link: #1565c0;
+  --weekend-bg: #e3f2fd; --short-bg: #fce4ec; --short-text: #b71c1c;
+  --ok-bg: #e8f5e9; --ok-text: #2e7d32; --flex-bg: #fff3e0;
+  --warn-bg: #fff3e0; --warn-text: #e65100;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px; color: var(--text); background: var(--bg); line-height: 1.4;
+}
+.container { max-width: 1600px; margin: 0 auto; padding: 16px 24px; }
+h1 { font-size: 22px; color: var(--heading); margin-bottom: 4px; }
+h2 { font-size: 17px; color: var(--heading); margin: 24px 0 8px; border-bottom: 2px solid var(--heading); padding-bottom: 4px; }
+h3 { font-size: 14px; color: #333; margin: 16px 0 6px; }
+.subtitle { color: #666; font-size: 13px; margin-bottom: 16px; }
+.generated { color: #999; font-size: 11px; margin-top: 4px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--heading); margin-bottom: 16px; flex-wrap: wrap; }
+.tab { padding: 8px 16px; cursor: pointer; border: 1px solid var(--border); border-bottom: none;
+  border-radius: 6px 6px 0 0; background: #f9f9f9; font-size: 13px; font-weight: 500;
+  color: #555; margin-bottom: -2px; }
+.tab:hover { background: #e3f2fd; }
+.tab.active { background: var(--heading); color: white; border-color: var(--heading); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+th, td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+th { background: #e8eaf6; font-weight: 600; font-size: 12px; position: sticky; top: 0; z-index: 2;
+  cursor: pointer; user-select: none; }
+th:hover { background: #c5cae9; }
+th.sort-asc::after { content: " ▲"; font-size: 9px; }
+th.sort-desc::after { content: " ▼"; font-size: 9px; }
+tr:nth-child(even) { background: var(--stripe); }
+tr.weekend-row { background: var(--weekend-bg); }
+tr.short-row { background: var(--short-bg); }
+
+/* Badges */
+.badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+.badge-ok { background: var(--ok-bg); color: var(--ok-text); }
+.badge-short { background: var(--short-bg); color: var(--short-text); }
+.badge-warn { background: var(--warn-bg); color: var(--warn-text); }
+.badge-info { background: #e3f2fd; color: #1565c0; }
+.site-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; color: white;
+  font-size: 11px; font-weight: 600; margin: 1px 2px; white-space: nowrap; }
+a.prov-link { color: var(--link); text-decoration: none; cursor: pointer; font-size: 12px;
+  display: block; padding: 1px 0; }
+a.prov-link:hover { text-decoration: underline; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat-card { background: #f5f7fa; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--heading); }
+.stat-label { font-size: 11px; color: #666; margin-top: 2px; }
+.stat-card.green { border-color: var(--ok-text); }
+.stat-card.green .stat-value { color: var(--ok-text); }
+.stat-card.red { border-color: var(--short-text); }
+.stat-card.red .stat-value { color: var(--short-text); }
+.stat-card.orange { border-color: var(--warn-text); }
+.stat-card.orange .stat-value { color: var(--warn-text); }
+
+/* Provider detail cards */
+.prov-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.prov-header { padding: 8px 12px; background: #f5f7fa; cursor: pointer; display: flex;
+  justify-content: space-between; align-items: center; }
+.prov-header:hover { background: #e3f2fd; }
+.prov-body { display: none; padding: 12px; border-top: 1px solid var(--border); }
+.prov-card.open .prov-body { display: block; }
+.prov-arrow { transition: transform 0.2s; }
+.prov-card.open .prov-arrow { transform: rotate(90deg); }
+
+/* Utilization bars */
+.util-bar { width: 80px; height: 14px; background: #eee; border-radius: 3px; display: inline-block; vertical-align: middle; }
+.util-fill { height: 100%; border-radius: 3px; }
+
+/* Mini calendar */
+.avail-months { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+.avail-month h4 { font-size: 11px; margin-bottom: 4px; text-align: center; }
+.mini-cal { display: grid; grid-template-columns: repeat(7, 22px); gap: 1px; }
+.dh { font-size: 9px; text-align: center; font-weight: 600; color: #999; }
+.dc { width: 22px; height: 22px; font-size: 9px; text-align: center; line-height: 22px;
+  border-radius: 2px; position: relative; }
+.dc.empty { background: transparent; }
+.dc.avail { background: #c8e6c9; }
+.dc.unavail { background: #ffcdd2; }
+.dc.blank { background: #fff9c4; }
+.dn { font-size: 8px; }
+.asg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 2px;
+  font-size: 7px; color: white; line-height: 22px; text-align: center; opacity: 0.85; }
+
+/* Search */
+.search-box { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; width: 300px; margin-bottom: 12px; }
+
+/* Filter buttons */
+.filter-btn { padding: 4px 10px; border: 2px solid #ccc; border-radius: 4px; background: white;
+  cursor: pointer; font-size: 11px; font-weight: 600; margin: 2px; }
+.filter-btn.active { border-color: var(--heading); background: #e3f2fd; }
+
+/* Heatmap */
+.hm-scroll { overflow-x: auto; margin: 8px 0; }
+.hm-table { border-collapse: collapse; font-size: 11px; }
+.hm-table th, .hm-table td { border: 1px solid var(--border); padding: 3px 6px; text-align: center; }
+.hm-table th { background: #e8eaf6; font-size: 10px; }
+.hm-ok { background: #d4edda; color: #155724; font-weight: 600; }
+.hm-warn { background: #fff3cd; color: #856404; font-weight: 600; }
+.hm-bad { background: #f8d7da; color: #721c24; font-weight: 700; }
+.hm-over { background: #d6eaf8; color: #1a5276; font-weight: 600; }
+
+/* Stretch bars */
+.stretch-bar { display: inline-block; height: 16px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+
+/* Password gate */
+#pw-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: #f5f7fa; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+}
+#pw-overlay.hidden { display: none; }
+#pw-box {
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 40px; max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+#pw-box h2 { margin-bottom: 8px; font-size: 20px; color: var(--heading); border: none; }
+#pw-box p { color: #666; font-size: 13px; margin-bottom: 20px; }
+#pw-input {
+  width: 100%; padding: 10px 14px; font-size: 15px;
+  border: 2px solid var(--border); border-radius: 6px; outline: none; margin-bottom: 12px;
+}
+#pw-input:focus { border-color: var(--link); }
+#pw-btn {
+  width: 100%; padding: 10px; font-size: 15px; font-weight: 600;
+  background: var(--heading); color: #fff; border: none; border-radius: 6px; cursor: pointer;
+}
+#pw-btn:hover { background: #1565c0; }
+#pw-error { color: var(--short-text); font-size: 13px; margin-top: 10px; display: none; }
+#report-content { display: none; }
+#report-content.unlocked { display: block; }
+
+/* Navigation header */
+.nav { background: #e8eaf6; padding: 10px 20px; margin-bottom: 20px; border-radius: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nav a { font-weight: 500; font-size: 13px; color: var(--link); text-decoration: none; padding: 4px 12px; border-radius: 4px; }
+.nav a:hover { background: #c5cae9; }
+.nav a.active { background: var(--heading); color: #fff; font-weight: 700; }
+.nav .nav-label { font-size: 12px; color: #666; font-weight: 600; margin-right: 4px; }
+
+@media (max-width: 768px) {
+  body { padding: 10px; font-size: 12px; }
+  .container { padding: 10px; }
+  h1 { font-size: 18px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .tab { padding: 6px 10px; font-size: 11px; }
+  .search-box { width: 100%; }
+  .mini-cal { grid-template-columns: repeat(7, 18px); }
+  .dc { width: 18px; height: 18px; line-height: 18px; }
+}
+</style></head><body>
+
+<div id="pw-overlay"><div id="pw-box"><h2>Password Required</h2><p>This report contains protected information.</p><input type="password" id="pw-input" placeholder="Enter password" autocomplete="off"><button id="pw-btn">Unlock</button><div id="pw-error">Incorrect password</div></div></div>
+
+<div id="report-content" class="">
+<div class="container">
+
+<div class="nav"><span class="nav-label">Variations:</span><a href="v3_index.html">Overview</a><a href="report_seed42.html">Seed 42</a><a href="report_seed7.html">Seed 7</a><a href="report_seed123.html">Seed 123</a><a href="report_seed256.html">Seed 256</a><a href="report_seed999.html">Seed 999</a><a href="v3_inputs.html" class="active">Inputs</a></div>
+
+<h1>Block 3 Inputs Reference — V3 Engine</h1>
+<p class="generated">Generated: 2026-02-21 02:28</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">Providers</div>
+  <div class="tab" onclick="switchTab(1)">Site Demand</div>
+  <div class="tab" onclick="switchTab(2)">Tags</div>
+</div>
+
+<div class="tab-content active">
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-value">179</div><div class="stat-label">Total Providers</div></div>
+<div class="stat-card"><div class="stat-value">124</div><div class="stat-label">Day Shift</div></div>
+<div class="stat-card"><div class="stat-value">22</div><div class="stat-label">Night Shift</div></div>
+<div class="stat-card"><div class="stat-value">24</div><div class="stat-label">Hybrid</div></div>
+<div class="stat-card"><div class="stat-value">1074</div><div class="stat-label">Total WK Remaining</div></div>
+<div class="stat-card"><div class="stat-value">900</div><div class="stat-label">Total WE Remaining</div></div>
+</div>
+
+<input type="text" class="search-box" placeholder="Search providers..." oninput="filterInputProviders(this.value)">
+
+<table id="inputsTable">
+<thead><tr>
+<th>Provider</th><th>Shift</th><th>FTE</th>
+<th>Ann WK</th><th>Ann WE</th>
+<th>B1+B2 WK</th><th>B1+B2 WE</th>
+<th>Rem WK</th><th>Rem WE</th>
+<th>Cooper%</th><th>VEB%</th><th>MHW%</th>
+<th>Mann%</th><th>Virtua%</th><th>Cape%</th>
+<th>Eligible Sites</th><th>Tags</th>
+</tr></thead><tbody>
+
+<tr>
+<td><strong>ABRAHAM, ANEY</strong></td>
+<td>Days</td>
+<td>0.90</td>
+<td>24</td><td>23</td>
+<td>15</td><td>15</td>
+<td>9</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>AHMED, SANAINA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>17</td><td>16</td>
+<td>9</td><td>8</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_elmer: No Elmer, only Vineland, MH</td>
+</tr>
+<tr>
+<td><strong>AJEMIAN, ANDREW</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>22</td>
+<td>15</td><td>15</td>
+<td>8</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">protected_time: 3 wks &amp; 4.5 wknd - new protected time</td>
+</tr>
+<tr>
+<td><strong>AL-SAFADI, MAHER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>16</td><td>16</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>ALAM, SAMAR</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>17</td><td>16</td>
+<td>10</td><td>10</td>
+<td>7</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>ALKEN, JEFFREY</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: Prefers 5 PM shifts</td>
+</tr>
+<tr>
+<td><strong>AMANAT, AMMAAR</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>13</td><td>12</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>ANWAR, FAWAZ</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>15</td><td>16</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 3 ELMER weeks/year</td>
+</tr>
+<tr>
+<td><strong>AUSAF, SARA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>17</td>
+<td>9</td>
+<td>9</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_elmer: No Elmer, only Vineland, likes 7 on/7 offschedule</td>
+</tr>
+<tr>
+<td><strong>BADR, SAMER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>16</td><td>11</td>
+<td>9</td><td>4</td>
+<td>7</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>BARRINGTON, DORRIE-SUSAN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>16</td><td>11</td>
+<td>10</td><td>8</td>
+<td>6</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>BAYRUNS, STEPHANIE</strong></td>
+<td>Days</td>
+<td>0.80</td>
+<td>21</td><td>21</td>
+<td>14</td><td>14</td>
+<td>7</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>BAZERGUI, CHRISTOPHER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>22</td>
+<td>15</td><td>14</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>BENDER, BRADLEY</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>16</td><td>16</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_um: No UM</td>
+</tr>
+<tr>
+<td><strong>BORRA, GAYATRI</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>20</td><td>2</td>
+<td>13</td><td>2</td>
+<td>7</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">pa_rotation: 14 weeks as PA</td>
+</tr>
+<tr>
+<td><strong>BREIBART, NATALLIA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>16</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">location_restriction: 3 weeks of Elmer only</td>
+</tr>
+<tr>
+<td><strong>BUTT, KAMBIZ</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>12</td>
+<td>18</td><td>8</td>
+<td>8</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>CADESTIN, MARJORIE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>18</td><td>6</td>
+<td>12</td><td>6</td>
+<td>6</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">service_restriction: 6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching). Cape in august</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>CALDER, NICHOLAS</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>CAPALBO, JOSEPH</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>20</td><td>20</td>
+<td>13</td><td>13</td>
+<td>7</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>CERCEO, ELIZABETH</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>-1</td>
+<td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>CHARLES, LAURIE</strong></td>
+<td>Days</td>
+<td>0.88</td>
+<td>23</td><td>22</td>
+<td>14</td><td>14</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>CHELLAPURAM, NIKITHA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>16</td><td>17</td>
+<td>11</td><td>9</td>
+<td>5</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">swing_shift: Days &amp; Swing</td>
+</tr>
+<tr>
+<td><strong>CHEN, WEI</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>14</td><td>14</td>
+<td>8</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>CHIMENTO, DANIELLE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>13</td><td>13</td>
+<td>10</td><td>9</td>
+<td>3</td>
+<td>4</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>CONTINO, GABRIELA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>8</td><td>4</td>
+<td>4</td><td>5</td>
+<td>4</td>
+<td>-1</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">split_department: Peds 0.35: 10 weeks and 4 weekends per year,</td>
+</tr>
+<tr>
+<td><strong>CONTRACTOR, ANAMTA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>13</td><td>12</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>COYLE, GLENYS</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>CRUZ, MYRIAM</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>4</td><td>4</td>
+<td>4</td><td>4</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>CUNNINGS, EMILY</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>12</td><td>12</td>
+<td>8</td><td>9</td>
+<td>4</td>
+<td>3</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px">night_constraint: Schedule nights, then Mannington then MH/Cooper</td>
+</tr>
+<tr>
+<td><strong>D&#x27;MELLO, KEVIN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>20</td><td>9</td>
+<td>13</td><td>6</td>
+<td>7</td>
+<td>3</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: 1 week MH per block</td>
+</tr>
+<tr>
+<td><strong>DADVAND, LAILA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>13</td><td>13</td>
+<td>4</td><td>4</td>
+<td>9</td>
+<td>9</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 70% Vineland, 30 % Elmer (4 weeks total for Elmer)</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>DAROSHEFSKI, NICHOLAS</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>17</td><td>13</td>
+<td>10</td><td>10</td>
+<td>7</td>
+<td>4</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_vineland: 60% only at Elmer, no vineland, Schedule night first, then Elmer and then MH</td>
+</tr>
+<tr>
+<td><strong>DEB, ASHOKE</strong></td>
+<td>Days</td>
+<td>0.50</td>
+<td>12</td><td>12</td>
+<td>8</td><td>8</td>
+<td>4</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>DEEN, IMAD UD</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>16</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 35% Elmer - 3 weeks per block</td>
+</tr>
+<tr>
+<td><strong>DELEON, MIGUEL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>14</td><td>15</td>
+<td>10</td>
+<td>9</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>DHILLION, JASJIT</strong></td>
+<td>Days</td>
+<td>0.88</td>
+<td>19</td><td>19</td>
+<td>9</td><td>9</td>
+<td>10</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">note: All virtua locations</td>
+</tr>
+<tr>
+<td><strong>DRAGOMIR, DAN</strong></td>
+<td>Days</td>
+<td>0.88</td>
+<td>26</td><td>20</td>
+<td>17</td><td>13</td>
+<td>9</td>
+<td>7</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>DUNN JR, ERNEST CHARLES</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>22</td><td>22</td>
+<td>14</td><td>13</td>
+<td>8</td>
+<td>9</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">swing_shift: 153 DAYS/25 SWING/ 26 NIGHT</td>
+</tr>
+<tr>
+<td><strong>EDELSTEIN, JONATHAN</strong></td>
+<td>Days</td>
+<td>0.88</td>
+<td>23</td><td>22</td>
+<td>15</td><td>16</td>
+<td>8</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>FARMER, ALKA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>8</td><td>6</td>
+<td>12</td><td>6</td>
+<td>-4</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">do_not_schedule: do_not_schedule</td>
+</tr>
+<tr>
+<td><strong>FARQUHAR, RHEA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>16</td>
+<td>9</td>
+<td>10</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">night_constraint: Need to schedule nights</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>FAZAL, ZOHEB</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>20</td><td>21</td>
+<td>14</td><td>14</td>
+<td>6</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>FERNANDEZ, CHRISTOPHER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>17</td>
+<td>9</td>
+<td>9</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>FILS, SOFIA</strong></td>
+<td>Nights</td>
+<td>0.33</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">night_constraint: Can not work M,T,W nights</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>FLEURY, OLENA</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: More Elmer than Vineland</td>
+</tr>
+<tr>
+<td><strong>GABRIEL, ANDRE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>15</td><td>0</td>
+<td>9</td><td>1</td>
+<td>6</td>
+<td>-1</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>GABRIEL, NATHANIEL</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>GAHMAN, KEVIN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">note: All virtua locations</td>
+</tr>
+<tr>
+<td><strong>GAMBALE, JOSEPH</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>12</td><td>12</td>
+<td>8</td><td>9</td>
+<td>4</td>
+<td>3</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>GANDHI, SNEHAL</strong></td>
+<td>Days</td>
+<td>0.50</td>
+<td>2</td><td>0</td>
+<td>0</td><td>0</td>
+<td>2</td>
+<td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px">do_not_schedule: do_not_schedule</td>
+</tr>
+<tr>
+<td><strong>GEORGE, BIBBIN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>12</td><td>6</td>
+<td>8</td><td>3</td>
+<td>4</td>
+<td>3</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>GEORGE, PHILIP</strong></td>
+<td>Days</td>
+<td>0.90</td>
+<td>21</td><td>21</td>
+<td>14</td><td>14</td>
+<td>7</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>GHUMAN, ARMANDEEP</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>20</td><td>20</td>
+<td>14</td><td>14</td>
+<td>6</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">note: Mount Holly mainly, but can go anywhere in Virtua</td>
+</tr>
+<tr>
+<td><strong>GLEANER, IAN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>25</td><td>0</td>
+<td>17</td><td>0</td>
+<td>8</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: 13 weeks and 14 weekends</td>
+</tr>
+<tr>
+<td><strong>GLICKMAN, CYNTHIA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>2</td><td>0</td>
+<td>2</td><td>1</td>
+<td>0</td>
+<td>-1</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>GORDAN, SABRINA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>19</td><td>16</td>
+<td>14</td><td>11</td>
+<td>5</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>GREENBERG, ALAN</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>GROGG, JOSEPH</strong></td>
+<td>Days</td>
+<td>0.90</td>
+<td>21</td><td>20</td>
+<td>14</td><td>14</td>
+<td>7</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>GROSS, MICHAEL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>17</td><td>16</td>
+<td>12</td><td>10</td>
+<td>5</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">location_restriction: Only doing swing shift at Cape. Days will be at Cooper. No MH.</td>
+</tr>
+<tr>
+<td><strong>GUMMADI, VEDAM</strong></td>
+<td>Days</td>
+<td>0.95</td>
+<td>24</td><td>20</td>
+<td>16</td><td>13</td>
+<td>8</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">do_not_schedule: Do not schedule her even though her leave is ending on 3.27.26 as she may extend it</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>HAIDER, QUANDEEL</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>15</td><td>15</td>
+<td>7</td><td>7</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>HAILEMARIAM, FITSUM</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>16</td><td>19</td>
+<td>10</td>
+<td>7</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 4 weeks/year for Elmer</td>
+</tr>
+<tr>
+<td><strong>HANES, DOUGLAS</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>20</td><td>6</td>
+<td>13</td><td>4</td>
+<td>7</td>
+<td>2</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>HAROLDSON, KATHRYN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>14</td><td>8</td>
+<td>10</td><td>7</td>
+<td>4</td>
+<td>1</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 1 wk per block at Vineland</td>
+</tr>
+<tr>
+<td><strong>HASSINGER, GABRIELLE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>18</td><td>14</td>
+<td>14</td><td>11</td>
+<td>4</td>
+<td>3</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: Need to pull contract</td>
+</tr>
+<tr>
+<td><strong>HAYDAR, ALI</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>18</td>
+<td>8</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>HENRIKSEN, GABRIELLE</strong></td>
+<td></td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>16</td><td>16</td>
+<td>10</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">no_elmer: Vineland only. No Elmer</td>
+</tr>
+<tr>
+<td><strong>HILDITCH, GREGORY</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>HOPE, LISA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>10</td><td>10</td>
+<td>7</td><td>7</td>
+<td>3</td>
+<td>3</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">swing_shift: 72 Days, 60 swing
+Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>JABEEN, EFFAT</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>13</td><td>13</td>
+<td>9</td><td>8</td>
+<td>4</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px">scheduling_priority: Nights and Mannington schedule first, then Vineland &amp; Cooper</td>
+</tr>
+<tr>
+<td><strong>JAYAMAHA, DON JUDE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>KAGAN, HEATHER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>13</td>
+<td>17</td><td>9</td>
+<td>7</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>KAMALU, OKEBUGWU</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>18</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px">night_constraint: No nights</td>
+</tr>
+<tr>
+<td><strong>KATH, HEATON</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>20</td>
+<td>14</td><td>13</td>
+<td>8</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>KAZMI, IZAZ</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>KEEFE, JOSEPH</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>19</td><td>19</td>
+<td>13</td><td>13</td>
+<td>6</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">swing_shift: 3 SWING/MONTH - only if we needed. Otherwise schedule as 26/26</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>KHANDKER, MAYA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>17</td><td>17</td>
+<td>10</td><td>11</td>
+<td>7</td>
+<td>6</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">split_department: Peds 6 wks, no weekend, IM 17/17/36 -</td>
+</tr>
+<tr>
+<td><strong>LEE, ANDREW</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>25</td>
+<td>17</td><td>16</td>
+<td>9</td>
+<td>9</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">scheduling_priority: Cape schedule first, then Cooper</td>
+</tr>
+<tr>
+<td><strong>LEE, GRACE</strong></td>
+<td>FMLA</td>
+<td>0.50</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>LEE, SUSAN</strong></td>
+<td>Days</td>
+<td>0.70</td>
+<td>17</td><td>17</td>
+<td>10</td><td>9</td>
+<td>7</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>LIANG, XIAOHUI</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>13</td><td>11</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">scheduling_priority: Schedule Mannington first, Cape next and then Cooper</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>LIU, RYAN</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>LOGUE, RAYMOND</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>34</td><td>16</td>
+<td>23</td><td>10</td>
+<td>11</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>LUTHRA, PRATEEK</strong></td>
+<td>Hybrid</td>
+<td>0.83</td>
+<td>13</td><td>13</td>
+<td>8</td><td>8</td>
+<td>5</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>Li, Ka Yi</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>23</td>
+<td>17</td><td>18</td>
+<td>7</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: She wasn&#x27;t listed on CMSRU list of times, so i have reached out to dean to verify</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>Li, Ryan</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>20</td><td>20</td>
+<td>12</td><td>14</td>
+<td>8</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>MAIORINO, VINCENT</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>11</td><td>10</td>
+<td>7</td><td>6</td>
+<td>4</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">scheduling_priority: Schedule nights and Cape first</td>
+</tr>
+<tr>
+<td><strong>MALONE, MICHAEL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MANDALA, ASHOK</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>21</td><td>8</td>
+<td>14</td><td>6</td>
+<td>7</td>
+<td>2</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MANGOLD, MELISSA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>15</td><td>13</td>
+<td>10</td><td>8</td>
+<td>5</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 1 wk per block at Vineland</td>
+</tr>
+<tr>
+<td><strong>MANNO, MEGAN</strong></td>
+<td>Days</td>
+<td>0.90</td>
+<td>22</td><td>10</td>
+<td>14</td><td>7</td>
+<td>8</td>
+<td>3</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>MANU, JOANITTA</strong></td>
+<td>Nights</td>
+<td>0.88</td>
+<td>9</td><td>7</td>
+<td>9</td><td>7</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">night_constraint: 10 nights per month</td>
+</tr>
+<tr>
+<td><strong>MAROTTA, KRISTEN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>22</td>
+<td>15</td><td>14</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>MARVANIA, CHAND</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MATCHETT, SEAN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>14</td><td>14</td>
+<td>8</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MATTA, PRANEEJA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>18</td>
+<td>8</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>MCCULLUM, CATHERINE</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>13</td><td>13</td>
+<td>9</td><td>8</td>
+<td>4</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MCMACKIN, PAUL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>32</td><td>20</td>
+<td>21</td><td>12</td>
+<td>11</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MCMILLAN, TYLER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>18</td><td>11</td>
+<td>11</td><td>7</td>
+<td>7</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: 1 wk per block at Vineland</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>MEHTA, SAURABH</strong></td>
+<td>Nights</td>
+<td>0.42</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MOHIUDDIN, SAFWAN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>13</td><td>13</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>MOK, JASPER</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>13</td><td>12</td>
+<td>8</td><td>8</td>
+<td>5</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MOOKERJEE, ANURADHA</strong></td>
+<td>Days</td>
+<td>0.70</td>
+<td>5</td><td>3</td>
+<td>3</td><td>2</td>
+<td>2</td>
+<td>2</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MU, JEFFREY</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>16</td>
+<td>8</td>
+<td>10</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MUNGEKAR, MANGESH</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>30</td><td>17</td>
+<td>19</td><td>13</td>
+<td>11</td>
+<td>4</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>MUSTAFA, YASMEEN</strong></td>
+<td>Days</td>
+<td>0.50</td>
+<td>10</td><td>9</td>
+<td>6</td><td>6</td>
+<td>4</td>
+<td>3</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>NASH, RACHEL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>12</td><td>5</td>
+<td>8</td><td>4</td>
+<td>4</td>
+<td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>NAWSHIN, SADIA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>13</td><td>11</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>NDIFOR, STEPHANIE</strong></td>
+<td>Nights</td>
+<td>0.92</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>NEWELL, GLENN</strong></td>
+<td>Days</td>
+<td>0.90</td>
+<td>32</td><td>0</td>
+<td>17</td><td>0</td>
+<td>15</td>
+<td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px">note: No more fridays<br>days_per_week: 4: never works on Fridays</td>
+</tr>
+<tr>
+<td><strong>NGUY, STEVEN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>25</td><td>25</td>
+<td>18</td><td>17</td>
+<td>7</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>OBERDORF, W. ERIC</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>24</td>
+<td>16</td><td>14</td>
+<td>7</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>OLAYEMI, CHARLTON</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>23</td>
+<td>14</td><td>16</td>
+<td>10</td>
+<td>7</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>ORATE-DIMAPILIS, CHRISTINA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>20</td><td>17</td>
+<td>13</td><td>10</td>
+<td>7</td>
+<td>7</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>ORTIZ, ADRIEM</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>18</td><td>6</td>
+<td>12</td><td>4</td>
+<td>6</td>
+<td>2</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">service_restriction: 6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching)</td>
+</tr>
+<tr>
+<td><strong>PALLI, VINAY</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>20</td><td>17</td>
+<td>10</td><td>15</td>
+<td>10</td>
+<td>2</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PATEL, KAJAL</strong></td>
+<td>Days</td>
+<td>0.50</td>
+<td>6</td><td>4</td>
+<td>4</td><td>2</td>
+<td>2</td>
+<td>2</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">do_not_schedule: 3 wk and 3 wknd FMLA</td>
+</tr>
+<tr>
+<td><strong>PATEL, PARITA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">note: 2 weeks per block at MH</td>
+</tr>
+<tr>
+<td><strong>PATEL, PRARTHI</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>21</td><td>20</td>
+<td>16</td><td>14</td>
+<td>5</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PATEL, PRITEN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>16</td>
+<td>8</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PATEL, REENA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>PATEL, RITESH</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td>0</td>
+<td>-1</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>PATEL, SAKSHAR</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>17</td><td>17</td>
+<td>11</td><td>9</td>
+<td>6</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">swing_shift: Has 56 swing (no nights)</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>PATEL, VAISHALI</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PATTANAIK, SAMBIT</strong></td>
+<td>Hybrid - 1.1.26 12/12/74</td>
+<td>1.00</td>
+<td>12</td><td>12</td>
+<td>3</td><td>0</td>
+<td>4</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">night_constraint: 3 nights at MH, 1 at Elmer, 1 at Vineland 1-2 nights at Cooper per month)</td>
+</tr>
+<tr>
+<td><strong>PATTERSON, KRISTEN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>18</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PEET, ALISA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>12</td><td>2</td>
+<td>7</td><td>0</td>
+<td>5</td>
+<td>2</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>PEREZ, CHRISTOPHER</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PODDAR, SAMEER</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>32</td><td>20</td>
+<td>20</td><td>14</td>
+<td>12</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">note: Cape time 13 weeks and 13 weeeknds</td>
+</tr>
+<tr>
+<td><strong>POMARY, VICTOR</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>17</td>
+<td>9</td>
+<td>9</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>PRAMOOD, REENA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>24</td>
+<td>15</td><td>16</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>RACHOIN, JEAN-SEBASTIEN</strong></td>
+<td>Days</td>
+<td>0.75</td>
+<td>8</td><td>0</td>
+<td>1</td><td>0</td>
+<td>7</td>
+<td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px">do_not_schedule: do_not_schedule</td>
+</tr>
+<tr>
+<td><strong>RAMDASS, VEDE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>18</td><td>16</td>
+<td>11</td><td>10</td>
+<td>7</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>RAMEEZA, AAKHILA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>22</td><td>21</td>
+<td>12</td><td>12</td>
+<td>10</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>RANGWALLA, INCIYA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>29</td><td>18</td>
+<td>21</td><td>12</td>
+<td>8</td>
+<td>6</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px">pa_rotation: 12 weeks of PA</td>
+</tr>
+<tr>
+<td><strong>RASHEED, SAMMAR</strong></td>
+<td>Days</td>
+<td>0.88</td>
+<td>8</td><td>6</td>
+<td>6</td><td>4</td>
+<td>2</td>
+<td>2</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>REDDY, SRIHARSHAN</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>RUGGERO, JAMES</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>18</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>RUPP, JESSICA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>18</td><td>18</td>
+<td>12</td><td>12</td>
+<td>6</td>
+<td>6</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">location_restriction: Only Virtua north</td>
+</tr>
+<tr>
+<td><strong>SAPASETTY, ADITYA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>16</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
+<td style="font-size:11px">scheduling_priority: Schedule Mannington First</td>
+</tr>
+<tr>
+<td><strong>SCHOLL, AMY</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>21</td><td>21</td>
+<td>14</td><td>14</td>
+<td>7</td>
+<td>7</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>SHAH, HELY</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>14</td><td>8</td>
+<td>11</td><td>7</td>
+<td>3</td>
+<td>1</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>SHAH, PRATIK</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>SHAIKH, SAMANA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>13</td><td>13</td>
+<td>9</td><td>8</td>
+<td>4</td>
+<td>5</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>SHARMA, MEENA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>16</td>
+<td>8</td>
+<td>10</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">pa_rotation: 11 weeks clinical and 15 weeks PA</td>
+</tr>
+<tr>
+<td><strong>SHIHONG, IRIS</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>16</td><td>16</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>SHKLAR, DAVID</strong></td>
+<td>Hybrid</td>
+<td>0.90</td>
+<td>17</td><td>12</td>
+<td>11</td><td>8</td>
+<td>6</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">pa_rotation: 17 weeks PA, his weekend days are suppose to be nights as well.<br>pa_rotation: 17 weeks PA<br>do_not_schedule: do_not_schedule</td>
+</tr>
+<tr>
+<td><strong>SHOR, SAMANTHA</strong></td>
+<td>Days</td>
+<td>0.89</td>
+<td>30</td><td>14</td>
+<td>17</td><td>12</td>
+<td>13</td>
+<td>2</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">note: Block 1 30/14
+Block 2 24/23</td>
+</tr>
+<tr>
+<td><strong>SHOUKRY, JESSICA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>17</td><td>18</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>SMITH, BRUCE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>23</td>
+<td>16</td><td>16</td>
+<td>7</td>
+<td>8</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>SPRINGER, MATTHEW</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>23</td><td>22</td>
+<td>16</td><td>14</td>
+<td>7</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">note: Cooper - 6/6, Vineland 6/6 MH - 11/9.5</td>
+</tr>
+<tr>
+<td><strong>STONE, PAUL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>17</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>SYKES, JOSEPH</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>14</td><td>13</td>
+<td>10</td>
+<td>11</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>TANIOUS, ASHRAF</strong></td>
+<td>Nights</td>
+<td>0.70</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>-0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>TERRIGNO, NICOLE</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>5</td><td>0</td>
+<td>5</td><td>0</td>
+<td>-0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>THAKUR, NAKITA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>15</td><td>15</td>
+<td>13</td><td>11</td>
+<td>2</td>
+<td>4</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>THOMAS, MARK</strong></td>
+<td>Days</td>
+<td>0.88</td>
+<td>15</td><td>15</td>
+<td>10</td><td>10</td>
+<td>5</td>
+<td>5</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: Check about his Clinical weeks at Vineland due to CMSRU</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>TORRES, JUSTIN</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">location_restriction: Keep him at Cooper only untile we get his credentiailng for cooper and virtua</td>
+</tr>
+<tr>
+<td><strong>TRONGONE, JENNIFER</strong></td>
+<td></td>
+<td>1.00</td>
+<td>20</td><td>19</td>
+<td>11</td><td>10</td>
+<td>9</td>
+<td>10</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">no_elmer: No Elmer</td>
+</tr>
+<tr>
+<td><strong>TROYANOVICH, ESTEBAN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>12</td>
+<td>18</td><td>8</td>
+<td>8</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>TUDOR, VLAD</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>12</td><td>12</td>
+<td>7</td><td>7</td>
+<td>5</td>
+<td>5</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>UFONDU, EBELE</strong></td>
+<td>Nights</td>
+<td>0.50</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>VALVANO, AMANDA</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">location_restriction: MH shifts - 10 hr, Vineland only Fri,Sat</td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>VARNER, PHILIP</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>10</td><td>10</td>
+<td>14</td><td>16</td>
+<td>-4</td>
+<td>-6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">swing_shift: 73 DAYS, 73 SWING, 17 NIGHTS</td>
+</tr>
+<tr>
+<td><strong>VELAYADIKOT, DEEPA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>12</td><td>8</td>
+<td>9</td><td>4</td>
+<td>3</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">do_not_schedule: do_not_schedule</td>
+</tr>
+<tr>
+<td><strong>VIJAYKUMAR, ASHWIN</strong></td>
+<td></td>
+<td>0.33</td>
+<td>8</td><td>7</td>
+<td>4</td><td>4</td>
+<td>4</td>
+<td>2</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr style="background:#fff3e0">
+<td><strong>WALLACE, NIURKA</strong></td>
+<td>Hybrid</td>
+<td>1.00</td>
+<td>11</td><td>11</td>
+<td>6</td><td>6</td>
+<td>5</td>
+<td>5</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>1</td>
+<td><span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">night_constraint: Assign 4 nights at cape and 2 nights at MH</td>
+</tr>
+<tr>
+<td><strong>WANG, ZIQIAN</strong></td>
+<td>Days</td>
+<td>0.80</td>
+<td>19</td><td>18</td>
+<td>11</td><td>12</td>
+<td>8</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>WHITE, EMMA</strong></td>
+<td>Days</td>
+<td>0.93</td>
+<td>13</td><td>8</td>
+<td>8</td><td>6</td>
+<td>5</td>
+<td>2</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">pct_override: cooper: 0%, mh: 100%</td>
+</tr>
+<tr>
+<td><strong>WILEN, DANIEL</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>23</td>
+<td>16</td><td>14</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
+<td style="font-size:11px">pa_rotation: 2 Week Cape PA and 2 week Vineland PA per block</td>
+</tr>
+<tr style="background:#e8eaf6">
+<td><strong>WOLFE, RICHARD</strong></td>
+<td>Nights</td>
+<td>1.00</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>YAGNIK, HENA</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>24</td><td>23</td>
+<td>17</td><td>14</td>
+<td>7</td>
+<td>9</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: C- 25% (6/6), V -45% (12/12),E 30% (8/8)</td>
+</tr>
+<tr>
+<td><strong>YOUNG, NICHOLAS</strong></td>
+<td></td>
+<td>1.00</td>
+<td>14</td><td>14</td>
+<td>10</td><td>10</td>
+<td>4</td>
+<td>4</td>
+<td>1</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>YU, AARON</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>26</td><td>26</td>
+<td>18</td><td>18</td>
+<td>8</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">note: Any vitua location. Keep MH less than Voorhees. Marlton</td>
+</tr>
+<tr>
+<td><strong>ZHANG, YANHONG</strong></td>
+<td></td>
+<td>1.00</td>
+<td>20</td><td>19</td>
+<td>11</td><td>10</td>
+<td>9</td>
+<td>8</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px"></td>
+</tr>
+<tr>
+<td><strong>ZHENG, ANGELA</strong></td>
+<td></td>
+<td>1.00</td>
+<td>14</td><td>13</td>
+<td>6</td><td>8</td>
+<td>8</td>
+<td>6</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
+<td style="font-size:11px">do_not_schedule: Don&#x27;t schedule after 9/20. 9/26 Due date. 12 weeks of maternity leave. 20/20 Total. Block 1 FMLA. w/ Core faculty 18/18</td>
+</tr>
+<tr>
+<td><strong>ZHENG, LIN</strong></td>
+<td>Days</td>
+<td>1.00</td>
+<td>7</td><td>3</td>
+<td>7</td><td>3</td>
+<td>-0</td>
+<td>0</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">pa_rotation: 1 week per block as PA at Vineland</td>
+</tr>
+<tr>
+<td><strong>ZORKO, JULIA</strong></td>
+<td></td>
+<td>1.00</td>
+<td>24</td><td>24</td>
+<td>8</td><td>8</td>
+<td>16</td>
+<td>16</td>
+<td>0</td><td>1</td>
+<td>0</td><td>0</td>
+<td>0</td><td>0</td>
+<td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
+<td style="font-size:11px">note: Wants 2 weeks off April 27 until May 10
+Need to block off June 22-28</td>
+</tr>
+</tbody></table>
+</div>
+<div class="tab-content">
+<h2>Site Staffing Demand</h2>
+<p style="color:#666;margin-bottom:12px">Providers needed per site per period type, as defined in the Excel "Sites" sheet.</p>
+<table><thead><tr><th>Site</th><th>Weekday</th><th>Weekend</th><th>Total / Week</th></tr></thead><tbody>
+<tr><td><span class="site-badge" style="background:#c62828">Cape</span></td>
+<td>7</td><td>6</td><td>13</td></tr>
+<tr><td><span class="site-badge" style="background:#1565c0">Cooper</span></td>
+<td>26</td><td>19</td><td>45</td></tr>
+<tr><td><span class="site-badge" style="background:#4a148c">Elmer</span></td>
+<td>1</td><td>1</td><td>2</td></tr>
+<tr><td><span class="site-badge" style="background:#e65100">Mannington</span></td>
+<td>1</td><td>1</td><td>2</td></tr>
+<tr><td><span class="site-badge" style="background:#2e7d32">Mullica Hill</span></td>
+<td>11</td><td>10</td><td>21</td></tr>
+<tr><td><span class="site-badge" style="background:#6a1b9a">Vineland</span></td>
+<td>11</td><td>11</td><td>22</td></tr>
+<tr><td><span class="site-badge" style="background:#00695c">Virtua Marlton</span></td>
+<td>1</td><td>1</td><td>2</td></tr>
+<tr><td><span class="site-badge" style="background:#00796b">Virtua Mt Holly</span></td>
+<td>2</td><td>2</td><td>4</td></tr>
+<tr><td><span class="site-badge" style="background:#00838f">Virtua Voorhees</span></td>
+<td>2</td><td>2</td><td>4</td></tr>
+<tr><td><span class="site-badge" style="background:#0277bd">Virtua Willingboro</span></td>
+<td>1</td><td>1</td><td>2</td></tr>
+<tr style="font-weight:700;background:#e8eaf6"><td>Total</td><td>63</td><td>54</td><td>117</td></tr>
+</tbody></table>
+<h2>Provider Pool by Site</h2>
+<p style="color:#666;margin-bottom:12px">Eligible providers per site (based on allocation percentages and tag restrictions).</p>
+<table><thead><tr><th>Site</th><th>Eligible Providers</th><th>Ratio (Pool / Demand)</th></tr></thead><tbody>
+<tr><td><span class="site-badge" style="background:#c62828">Cape</span></td>
+<td>31</td>
+<td><span class="badge badge-ok">4.4x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#1565c0">Cooper</span></td>
+<td>117</td>
+<td><span class="badge badge-ok">4.5x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#4a148c">Elmer</span></td>
+<td>51</td>
+<td><span class="badge badge-ok">51.0x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#e65100">Mannington</span></td>
+<td>14</td>
+<td><span class="badge badge-ok">14.0x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#2e7d32">Mullica Hill</span></td>
+<td>61</td>
+<td><span class="badge badge-ok">5.5x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#6a1b9a">Vineland</span></td>
+<td>62</td>
+<td><span class="badge badge-ok">5.6x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#00695c">Virtua Marlton</span></td>
+<td>37</td>
+<td><span class="badge badge-ok">37.0x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#00796b">Virtua Mt Holly</span></td>
+<td>37</td>
+<td><span class="badge badge-ok">18.5x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#00838f">Virtua Voorhees</span></td>
+<td>37</td>
+<td><span class="badge badge-ok">18.5x</span></td></tr>
+<tr><td><span class="site-badge" style="background:#0277bd">Virtua Willingboro</span></td>
+<td>37</td>
+<td><span class="badge badge-ok">37.0x</span></td></tr>
+</tbody></table>
+</div>
+<div class="tab-content">
+<h2>Provider Tags</h2>
+<p style="color:#666;margin-bottom:12px">Tags modify scheduling behavior for individual providers.</p>
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-value">16</div><div class="stat-label">Unique Tags</div></div>
+<div class="stat-card"><div class="stat-value">96</div><div class="stat-label">Total Assignments</div></div>
+<div class="stat-card"><div class="stat-value">93</div><div class="stat-label">Providers w/ Tags</div></div>
+</div>
+<h3>days_per_week: 4 <span class="badge badge-warn">1</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>NEWELL, GLENN</td><td>never works on Fridays</td></tr>
+</tbody></table>
+<h3>do_not_schedule <span class="badge badge-warn">8</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>FARMER, ALKA</td><td>do_not_schedule</td></tr>
+<tr><td>GANDHI, SNEHAL</td><td>do_not_schedule</td></tr>
+<tr><td>GUMMADI, VEDAM</td><td>Do not schedule her even though her leave is ending on 3.27.26 as she may extend it</td></tr>
+<tr><td>PATEL, KAJAL</td><td>3 wk and 3 wknd FMLA</td></tr>
+<tr><td>RACHOIN, JEAN-SEBASTIEN</td><td>do_not_schedule</td></tr>
+<tr><td>SHKLAR, DAVID</td><td>do_not_schedule</td></tr>
+<tr><td>VELAYADIKOT, DEEPA</td><td>do_not_schedule</td></tr>
+<tr><td>ZHENG, ANGELA</td><td>Don&#x27;t schedule after 9/20. 9/26 Due date. 12 weeks of maternity leave. 20/20 Total. Block 1 FMLA. w/ Core faculty 18/18</td></tr>
+</tbody></table>
+<h3>fmla <span class="badge badge-warn">11</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>Contino, Gabriela</td><td>LeaveBegDate: 2035-09-23; LeaveEndDate: 2025-12-15; Reason-Relationship: Care for newborn/Newborn; : 11 weeks</td></tr>
+<tr><td>Henriksen, Gabrielle</td><td>LeaveBegDate: 2025-04-29; LeaveEndDate: 2025-06-15; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-06-16; : 7 weeks</td></tr>
+<tr><td>Lee, Grace</td><td>LeaveBegDate: 2025-03-31; LeaveEndDate: 2025-12-30; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-12-31; : N/A</td></tr>
+<tr><td>Lee, Se-Eun</td><td>LeaveBegDate: 2025-11-19; LeaveEndDate: 2025-12-14; Reason-Relationship: Serious Health Condition/Parent (All Covered); Return to work: 2026-02-11; : 2.5 week</td></tr>
+<tr><td>Marvania, Chand</td><td>LeaveBegDate: 2025-10-08; LeaveEndDate: 2025-12-10; Reason-Relationship: Pregnancy/Self; Return to work: 2025-12-17; : 9 weeks</td></tr>
+<tr><td>Patel, Kajal</td><td>LeaveBegDate: 2025-05-07; LeaveEndDate: 2025-10-25; Reason-Relationship: Pregnancy/Self; Return to work: 2025-07-24; : 12 weeks</td></tr>
+<tr><td>Ramdass, Vede</td><td>LeaveBegDate: 2025-08-06; LeaveEndDate: 2025-09-16; Reason-Relationship: Serious Health Condition/Self; Return to work: 2025-09-17; : 6 weeks</td></tr>
+<tr><td>Shor, Samantha</td><td>LeaveBegDate: 2025-06-30; LeaveEndDate: 2025-07-06; Reason-Relationship: Personal Leave; : 1 week</td></tr>
+<tr><td>Vedam, Gmmadi</td><td>LeaveBegDate: 2025-11-24; LeaveEndDate: 2026-03-27; Reason-Relationship: Serious Health Condition/Self; : Not clear return date</td></tr>
+<tr><td>White, Emma</td><td>LeaveBegDate: 2025-11-03; LeaveEndDate: 2026-01-07; Reason-Relationship: Pregnancy/Self; : 9 weeks</td></tr>
+<tr><td>Zheng, Angela</td><td>LeaveBegDate: 2025-11-10; LeaveEndDate: 2026-01-30; Reason-Relationship: Care for newborn/Newborn; : 12 weeks</td></tr>
+</tbody></table>
+<h3>location_restriction <span class="badge badge-warn">6</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>BREIBART, NATALLIA</td><td>3 weeks of Elmer only</td></tr>
+<tr><td>Elsabeth Asare</td><td>Mannington only</td></tr>
+<tr><td>GROSS, MICHAEL</td><td>Only doing swing shift at Cape. Days will be at Cooper. No MH.</td></tr>
+<tr><td>RUPP, JESSICA</td><td>Only Virtua north</td></tr>
+<tr><td>TORRES, JUSTIN</td><td>Keep him at Cooper only untile we get his credentiailng for cooper and virtua</td></tr>
+<tr><td>VALVANO, AMANDA</td><td>MH shifts - 10 hr, Vineland only Fri,Sat</td></tr>
+</tbody></table>
+<h3>night_constraint <span class="badge badge-warn">7</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>CUNNINGS, EMILY</td><td>Schedule nights, then Mannington then MH/Cooper</td></tr>
+<tr><td>FARQUHAR, RHEA</td><td>Need to schedule nights</td></tr>
+<tr><td>FILS, SOFIA</td><td>Can not work M,T,W nights</td></tr>
+<tr><td>KAMALU, OKEBUGWU</td><td>No nights</td></tr>
+<tr><td>MANU, JOANITTA</td><td>10 nights per month</td></tr>
+<tr><td>PATTANAIK, SAMBIT</td><td>3 nights at MH, 1 at Elmer, 1 at Vineland 1-2 nights at Cooper per month)</td></tr>
+<tr><td>WALLACE, NIURKA</td><td>Assign 4 nights at cape and 2 nights at MH</td></tr>
+</tbody></table>
+<h3>no_elmer <span class="badge badge-warn">12</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>AHMED, SANAINA</td><td>No Elmer, only Vineland, MH</td></tr>
+<tr><td>AMANAT, AMMAAR</td><td>No Elmer</td></tr>
+<tr><td>AUSAF, SARA</td><td>No Elmer, only Vineland, likes 7 on/7 offschedule</td></tr>
+<tr><td>CONTRACTOR, ANAMTA</td><td>No Elmer</td></tr>
+<tr><td>DRAGOMIR, DAN</td><td>No Elmer</td></tr>
+<tr><td>EDELSTEIN, JONATHAN</td><td>No Elmer</td></tr>
+<tr><td>HAIDER, QUANDEEL</td><td>No Elmer</td></tr>
+<tr><td>HENRIKSEN, GABRIELLE</td><td>Vineland only. No Elmer</td></tr>
+<tr><td>ORATE-DIMAPILIS, CHRISTINA</td><td>No Elmer</td></tr>
+<tr><td>PATEL, REENA</td><td>No Elmer</td></tr>
+<tr><td>THAKUR, NAKITA</td><td>No Elmer</td></tr>
+<tr><td>TRONGONE, JENNIFER</td><td>No Elmer</td></tr>
+</tbody></table>
+<h3>no_um <span class="badge badge-warn">1</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>BENDER, BRADLEY</td><td>No UM</td></tr>
+</tbody></table>
+<h3>no_vineland <span class="badge badge-warn">1</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>DAROSHEFSKI, NICHOLAS</td><td>60% only at Elmer, no vineland, Schedule night first, then Elmer and then MH</td></tr>
+</tbody></table>
+<h3>note <span class="badge badge-warn">25</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>ALKEN, JEFFREY</td><td>Prefers 5 PM shifts</td></tr>
+<tr><td>ANWAR, FAWAZ</td><td>3 ELMER weeks/year</td></tr>
+<tr><td>D&#x27;MELLO, KEVIN</td><td>1 week MH per block</td></tr>
+<tr><td>DADVAND, LAILA</td><td>70% Vineland, 30 % Elmer (4 weeks total for Elmer)</td></tr>
+<tr><td>DEEN, IMAD UD</td><td>35% Elmer - 3 weeks per block</td></tr>
+<tr><td>DHILLION, JASJIT</td><td>All virtua locations</td></tr>
+<tr><td>FLEURY, OLENA</td><td>More Elmer than Vineland</td></tr>
+<tr><td>GAHMAN, KEVIN</td><td>All virtua locations</td></tr>
+<tr><td>GHUMAN, ARMANDEEP</td><td>Mount Holly mainly, but can go anywhere in Virtua</td></tr>
+<tr><td>GLEANER, IAN</td><td>13 weeks and 14 weekends</td></tr>
+<tr><td>HAILEMARIAM, FITSUM</td><td>4 weeks/year for Elmer</td></tr>
+<tr><td>HAROLDSON, KATHRYN</td><td>1 wk per block at Vineland</td></tr>
+<tr><td>HASSINGER, GABRIELLE</td><td>Need to pull contract</td></tr>
+<tr><td>Li, Ka Yi</td><td>She wasn&#x27;t listed on CMSRU list of times, so i have reached out to dean to verify</td></tr>
+<tr><td>MANGOLD, MELISSA</td><td>1 wk per block at Vineland</td></tr>
+<tr><td>MCMILLAN, TYLER</td><td>1 wk per block at Vineland</td></tr>
+<tr><td>NEWELL, GLENN</td><td>No more fridays</td></tr>
+<tr><td>PATEL, PARITA</td><td>2 weeks per block at MH</td></tr>
+<tr><td>PODDAR, SAMEER</td><td>Cape time 13 weeks and 13 weeeknds</td></tr>
+<tr><td>SHOR, SAMANTHA</td><td>Block 1 30/14
+Block 2 24/23</td></tr>
+<tr><td>SPRINGER, MATTHEW</td><td>Cooper - 6/6, Vineland 6/6 MH - 11/9.5</td></tr>
+<tr><td>THOMAS, MARK</td><td>Check about his Clinical weeks at Vineland due to CMSRU</td></tr>
+<tr><td>YAGNIK, HENA</td><td>C- 25% (6/6), V -45% (12/12),E 30% (8/8)</td></tr>
+<tr><td>YU, AARON</td><td>Any vitua location. Keep MH less than Voorhees. Marlton</td></tr>
+<tr><td>ZORKO, JULIA</td><td>Wants 2 weeks off April 27 until May 10
+Need to block off June 22-28</td></tr>
+</tbody></table>
+<h3>pa_rotation <span class="badge badge-warn">7</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>BORRA, GAYATRI</td><td>14 weeks as PA</td></tr>
+<tr><td>RANGWALLA, INCIYA</td><td>12 weeks of PA</td></tr>
+<tr><td>SHARMA, MEENA</td><td>11 weeks clinical and 15 weeks PA</td></tr>
+<tr><td>SHKLAR, DAVID</td><td>17 weeks PA, his weekend days are suppose to be nights as well.</td></tr>
+<tr><td>SHKLAR, DAVID</td><td>17 weeks PA</td></tr>
+<tr><td>WILEN, DANIEL</td><td>2 Week Cape PA and 2 week Vineland PA per block</td></tr>
+<tr><td>ZHENG, LIN</td><td>1 week per block as PA at Vineland</td></tr>
+</tbody></table>
+<h3>pct_override <span class="badge badge-warn">1</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>WHITE, EMMA</td><td>cooper: 0%, mh: 100%</td></tr>
+</tbody></table>
+<h3>protected_time <span class="badge badge-warn">1</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>AJEMIAN, ANDREW</td><td>3 wks &amp; 4.5 wknd - new protected time</td></tr>
+</tbody></table>
+<h3>scheduling_priority <span class="badge badge-warn">5</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>JABEEN, EFFAT</td><td>Nights and Mannington schedule first, then Vineland &amp; Cooper</td></tr>
+<tr><td>LEE, ANDREW</td><td>Cape schedule first, then Cooper</td></tr>
+<tr><td>LIANG, XIAOHUI</td><td>Schedule Mannington first, Cape next and then Cooper</td></tr>
+<tr><td>MAIORINO, VINCENT</td><td>Schedule nights and Cape first</td></tr>
+<tr><td>SAPASETTY, ADITYA</td><td>Schedule Mannington First</td></tr>
+</tbody></table>
+<h3>service_restriction <span class="badge badge-warn">2</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>CADESTIN, MARJORIE</td><td>6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching). Cape in august</td></tr>
+<tr><td>ORTIZ, ADRIEM</td><td>6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching)</td></tr>
+</tbody></table>
+<h3>split_department <span class="badge badge-warn">2</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>CONTINO, GABRIELA</td><td>Peds 0.35: 10 weeks and 4 weekends per year,</td></tr>
+<tr><td>KHANDKER, MAYA</td><td>Peds 6 wks, no weekend, IM 17/17/36 -</td></tr>
+</tbody></table>
+<h3>swing_shift <span class="badge badge-warn">6</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>CHELLAPURAM, NIKITHA</td><td>Days &amp; Swing</td></tr>
+<tr><td>DUNN JR, ERNEST CHARLES</td><td>153 DAYS/25 SWING/ 26 NIGHT</td></tr>
+<tr><td>HOPE, LISA</td><td>72 Days, 60 swing
+Please assign her 7 days(1 full week) and 4 swing shifts per month</td></tr>
+<tr><td>KEEFE, JOSEPH</td><td>3 SWING/MONTH - only if we needed. Otherwise schedule as 26/26</td></tr>
+<tr><td>PATEL, SAKSHAR</td><td>Has 56 swing (no nights)</td></tr>
+<tr><td>VARNER, PHILIP</td><td>73 DAYS, 73 SWING, 17 NIGHTS</td></tr>
+</tbody></table>
+</div>
+
+<script>
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.tab-content').forEach(function(tc, i) {
+    tc.classList.toggle('active', i === idx);
+  });
+}
+function filterInputProviders(q) {
+  q = q.toUpperCase();
+  document.querySelectorAll('#inputsTable tbody tr').forEach(function(row) {
+    row.style.display = row.textContent.toUpperCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+
+</div>
+</div>
+<script>
+(function() {
+  var HASH = "7781113a99f177280ad3e89bcf631f03acb8fa8e626082dd9158eeee0bdd5674";
+  var overlay = document.getElementById("pw-overlay");
+  var content = document.getElementById("report-content");
+  var input = document.getElementById("pw-input");
+  var btn = document.getElementById("pw-btn");
+  var errEl = document.getElementById("pw-error");
+  if (!overlay) return;
+
+  async function sha256(str) {
+    var buf = new TextEncoder().encode(str);
+    var hash = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hash)).map(function(b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  async function tryUnlock() {
+    var pw = input.value;
+    var h = await sha256(pw);
+    if (h === HASH) {
+      overlay.classList.add("hidden");
+      content.classList.add("unlocked");
+    } else {
+      errEl.style.display = "block";
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  btn.addEventListener("click", tryUnlock);
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") tryUnlock();
+  });
+  input.focus();
+})();
+</script>
+</body></html>
