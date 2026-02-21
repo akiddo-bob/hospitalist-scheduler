@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Block 3 Schedule — V3 Overview</title>
+<style>
+:root {
+  --bg: #ffffff; --text: #1a1a1a; --heading: #0d47a1;
+  --border: #d0d0d0; --stripe: #f5f7fa; --link: #1565c0;
+  --weekend-bg: #e3f2fd; --short-bg: #fce4ec; --short-text: #b71c1c;
+  --ok-bg: #e8f5e9; --ok-text: #2e7d32; --flex-bg: #fff3e0;
+  --warn-bg: #fff3e0; --warn-text: #e65100;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px; color: var(--text); background: var(--bg); line-height: 1.4;
+}
+.container { max-width: 1600px; margin: 0 auto; padding: 16px 24px; }
+h1 { font-size: 22px; color: var(--heading); margin-bottom: 4px; }
+h2 { font-size: 17px; color: var(--heading); margin: 24px 0 8px; border-bottom: 2px solid var(--heading); padding-bottom: 4px; }
+h3 { font-size: 14px; color: #333; margin: 16px 0 6px; }
+.subtitle { color: #666; font-size: 13px; margin-bottom: 16px; }
+.generated { color: #999; font-size: 11px; margin-top: 4px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--heading); margin-bottom: 16px; flex-wrap: wrap; }
+.tab { padding: 8px 16px; cursor: pointer; border: 1px solid var(--border); border-bottom: none;
+  border-radius: 6px 6px 0 0; background: #f9f9f9; font-size: 13px; font-weight: 500;
+  color: #555; margin-bottom: -2px; }
+.tab:hover { background: #e3f2fd; }
+.tab.active { background: var(--heading); color: white; border-color: var(--heading); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+th, td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+th { background: #e8eaf6; font-weight: 600; font-size: 12px; position: sticky; top: 0; z-index: 2;
+  cursor: pointer; user-select: none; }
+th:hover { background: #c5cae9; }
+th.sort-asc::after { content: " ▲"; font-size: 9px; }
+th.sort-desc::after { content: " ▼"; font-size: 9px; }
+tr:nth-child(even) { background: var(--stripe); }
+tr.weekend-row { background: var(--weekend-bg); }
+tr.short-row { background: var(--short-bg); }
+
+/* Badges */
+.badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+.badge-ok { background: var(--ok-bg); color: var(--ok-text); }
+.badge-short { background: var(--short-bg); color: var(--short-text); }
+.badge-warn { background: var(--warn-bg); color: var(--warn-text); }
+.badge-info { background: #e3f2fd; color: #1565c0; }
+.site-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; color: white;
+  font-size: 11px; font-weight: 600; margin: 1px 2px; white-space: nowrap; }
+a.prov-link { color: var(--link); text-decoration: none; cursor: pointer; font-size: 12px;
+  display: block; padding: 1px 0; }
+a.prov-link:hover { text-decoration: underline; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat-card { background: #f5f7fa; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--heading); }
+.stat-label { font-size: 11px; color: #666; margin-top: 2px; }
+.stat-card.green { border-color: var(--ok-text); }
+.stat-card.green .stat-value { color: var(--ok-text); }
+.stat-card.red { border-color: var(--short-text); }
+.stat-card.red .stat-value { color: var(--short-text); }
+.stat-card.orange { border-color: var(--warn-text); }
+.stat-card.orange .stat-value { color: var(--warn-text); }
+
+/* Provider detail cards */
+.prov-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.prov-header { padding: 8px 12px; background: #f5f7fa; cursor: pointer; display: flex;
+  justify-content: space-between; align-items: center; }
+.prov-header:hover { background: #e3f2fd; }
+.prov-body { display: none; padding: 12px; border-top: 1px solid var(--border); }
+.prov-card.open .prov-body { display: block; }
+.prov-arrow { transition: transform 0.2s; }
+.prov-card.open .prov-arrow { transform: rotate(90deg); }
+
+/* Utilization bars */
+.util-bar { width: 80px; height: 14px; background: #eee; border-radius: 3px; display: inline-block; vertical-align: middle; }
+.util-fill { height: 100%; border-radius: 3px; }
+
+/* Mini calendar */
+.avail-months { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+.avail-month h4 { font-size: 11px; margin-bottom: 4px; text-align: center; }
+.mini-cal { display: grid; grid-template-columns: repeat(7, 22px); gap: 1px; }
+.dh { font-size: 9px; text-align: center; font-weight: 600; color: #999; }
+.dc { width: 22px; height: 22px; font-size: 9px; text-align: center; line-height: 22px;
+  border-radius: 2px; position: relative; }
+.dc.empty { background: transparent; }
+.dc.avail { background: #c8e6c9; }
+.dc.unavail { background: #ffcdd2; }
+.dc.blank { background: #fff9c4; }
+.dn { font-size: 8px; }
+.asg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 2px;
+  font-size: 7px; color: white; line-height: 22px; text-align: center; opacity: 0.85; }
+
+/* Search */
+.search-box { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; width: 300px; margin-bottom: 12px; }
+
+/* Filter buttons */
+.filter-btn { padding: 4px 10px; border: 2px solid #ccc; border-radius: 4px; background: white;
+  cursor: pointer; font-size: 11px; font-weight: 600; margin: 2px; }
+.filter-btn.active { border-color: var(--heading); background: #e3f2fd; }
+
+/* Heatmap */
+.hm-scroll { overflow-x: auto; margin: 8px 0; }
+.hm-table { border-collapse: collapse; font-size: 11px; }
+.hm-table th, .hm-table td { border: 1px solid var(--border); padding: 3px 6px; text-align: center; }
+.hm-table th { background: #e8eaf6; font-size: 10px; }
+.hm-ok { background: #d4edda; color: #155724; font-weight: 600; }
+.hm-warn { background: #fff3cd; color: #856404; font-weight: 600; }
+.hm-bad { background: #f8d7da; color: #721c24; font-weight: 700; }
+.hm-over { background: #d6eaf8; color: #1a5276; font-weight: 600; }
+
+/* Stretch bars */
+.stretch-bar { display: inline-block; height: 16px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+
+/* Password gate */
+#pw-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: #f5f7fa; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+}
+#pw-overlay.hidden { display: none; }
+#pw-box {
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 40px; max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+#pw-box h2 { margin-bottom: 8px; font-size: 20px; color: var(--heading); border: none; }
+#pw-box p { color: #666; font-size: 13px; margin-bottom: 20px; }
+#pw-input {
+  width: 100%; padding: 10px 14px; font-size: 15px;
+  border: 2px solid var(--border); border-radius: 6px; outline: none; margin-bottom: 12px;
+}
+#pw-input:focus { border-color: var(--link); }
+#pw-btn {
+  width: 100%; padding: 10px; font-size: 15px; font-weight: 600;
+  background: var(--heading); color: #fff; border: none; border-radius: 6px; cursor: pointer;
+}
+#pw-btn:hover { background: #1565c0; }
+#pw-error { color: var(--short-text); font-size: 13px; margin-top: 10px; display: none; }
+#report-content { display: none; }
+#report-content.unlocked { display: block; }
+
+/* Navigation header */
+.nav { background: #e8eaf6; padding: 10px 20px; margin-bottom: 20px; border-radius: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nav a { font-weight: 500; font-size: 13px; color: var(--link); text-decoration: none; padding: 4px 12px; border-radius: 4px; }
+.nav a:hover { background: #c5cae9; }
+.nav a.active { background: var(--heading); color: #fff; font-weight: 700; }
+.nav .nav-label { font-size: 12px; color: #666; font-weight: 600; margin-right: 4px; }
+
+@media (max-width: 768px) {
+  body { padding: 10px; font-size: 12px; }
+  .container { padding: 10px; }
+  h1 { font-size: 18px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .tab { padding: 6px 10px; font-size: 11px; }
+  .search-box { width: 100%; }
+  .mini-cal { grid-template-columns: repeat(7, 18px); }
+  .dc { width: 18px; height: 18px; line-height: 18px; }
+}
+</style></head><body>
+
+<div id="pw-overlay"><div id="pw-box"><h2>Password Required</h2><p>This report contains protected information.</p><input type="password" id="pw-input" placeholder="Enter password" autocomplete="off"><button id="pw-btn">Unlock</button><div id="pw-error">Incorrect password</div></div></div>
+
+<div id="report-content" class="">
+<div class="container">
+
+<div class="nav"><span class="nav-label">Variations:</span><a href="v3_index.html" class="active">Overview</a><a href="report_seed42.html">Seed 42</a><a href="report_seed7.html">Seed 7</a><a href="report_seed123.html">Seed 123</a><a href="report_seed256.html">Seed 256</a><a href="report_seed999.html">Seed 999</a></div>
+
+<h1>Block 3 Schedule Report — V3 Engine</h1>
+<p class="subtitle">March 02 &ndash; June 28, 2026</p>
+<p class="generated">Generated: 2026-02-21 02:21</p>
+
+<h2>Seed Comparison</h2>
+<p style="color:#666;margin-bottom:12px">Each variation uses a different random seed, producing a different assignment pattern while following the same rules. Click a seed to see its full report.</p>
+<table><thead><tr>
+<th>Seed</th><th>WK Coverage</th><th>WE Coverage</th><th>Gaps</th>
+<th>Zero-Gap Viol</th><th>Weeks Asgn</th><th>WE Asgn</th><th>At Capacity</th><th>Under-Used</th><th>Report</th>
+</tr></thead><tbody>
+
+<tr><td><strong>42</strong></td>
+<td><span class="badge badge-short">86.4%</span></td>
+<td><span class="badge badge-short">89.7%</span></td>
+<td><span class="badge badge-short">241</span></td>
+<td>0</td>
+<td>925</td><td>823</td>
+<td>105</td>
+<td>39</td>
+<td><a href="report_seed42.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
+<tr><td><strong>7</strong></td>
+<td><span class="badge badge-short">86.6%</span></td>
+<td><span class="badge badge-short">90.2%</span></td>
+<td><span class="badge badge-short">234</span></td>
+<td>0</td>
+<td>927</td><td>828</td>
+<td>106</td>
+<td>38</td>
+<td><a href="report_seed7.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
+<tr><td><strong>123</strong></td>
+<td><span class="badge badge-short">85.9%</span></td>
+<td><span class="badge badge-short">89.5%</span></td>
+<td><span class="badge badge-short">247</span></td>
+<td>0</td>
+<td>920</td><td>822</td>
+<td>105</td>
+<td>39</td>
+<td><a href="report_seed123.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
+<tr><td><strong>256</strong></td>
+<td><span class="badge badge-short">86.7%</span></td>
+<td><span class="badge badge-short">89.8%</span></td>
+<td><span class="badge badge-short">236</span></td>
+<td>0</td>
+<td>929</td><td>824</td>
+<td>108</td>
+<td>36</td>
+<td><a href="report_seed256.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
+<tr><td><strong>999</strong></td>
+<td><span class="badge badge-short">86.2%</span></td>
+<td><span class="badge badge-short">89.9%</span></td>
+<td><span class="badge badge-short">241</span></td>
+<td>0</td>
+<td>923</td><td>825</td>
+<td>104</td>
+<td>40</td>
+<td><a href="report_seed999.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
+</tbody></table>
+</div>
+</div>
+<script>
+(function() {
+  var HASH = "7781113a99f177280ad3e89bcf631f03acb8fa8e626082dd9158eeee0bdd5674";
+  var overlay = document.getElementById("pw-overlay");
+  var content = document.getElementById("report-content");
+  var input = document.getElementById("pw-input");
+  var btn = document.getElementById("pw-btn");
+  var errEl = document.getElementById("pw-error");
+  if (!overlay) return;
+
+  async function sha256(str) {
+    var buf = new TextEncoder().encode(str);
+    var hash = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hash)).map(function(b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  async function tryUnlock() {
+    var pw = input.value;
+    var h = await sha256(pw);
+    if (h === HASH) {
+      overlay.classList.add("hidden");
+      content.classList.add("unlocked");
+    } else {
+      errEl.style.display = "block";
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  btn.addEventListener("click", tryUnlock);
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") tryUnlock();
+  });
+  input.focus();
+})();
+</script>
+</body></html>
