@@ -87,7 +87,7 @@ def classify_service(service_name, hours):
     # ── EXCLUDE rules (priority order from rules doc) ─────────────────
 
     # APP roles
-    if " app" in sname or sname.startswith("app ") or sname.endswith(" app"):
+    if " app" in sname or "-app" in sname or "(app)" in sname or sname.startswith("app ") or sname.endswith(" app"):
         return "exclude"
     if "apn" in sname:
         return "exclude"
@@ -136,6 +136,10 @@ def classify_service(service_name, hours):
     if "long call" in sname:
         return "exclude"
     if sname.startswith("direct care long call"):
+        return "exclude"
+
+    # Early Call (not a physician day shift)
+    if "early call" in sname:
         return "exclude"
 
     # Virtua Coverage (only when BOTH "virtua" AND "coverage" present)

@@ -292,6 +292,140 @@ def check_site_demand(day_assignments, sites_demand):
     return results
 
 
+# ── pct_override tag support ──────────────────────────────────────────────
+
+PCT_FIELDS = ["pct_cooper", "pct_inspira_veb", "pct_inspira_mhw",
+              "pct_mannington", "pct_virtua", "pct_cape"]
+
+
+def resolve_site_field(text):
+    """Fuzzy-match a user-written site name to a pct_* field.
+
+    Same substring-matching approach as service_to_site().
+    Accepts natural names like 'cooper', 'mh', 'mullica hill', 'vineland',
+    'elmer', 'veb', 'virtua', 'cape', 'mannington', or raw field names.
+    """
+    s = text.strip().lower()
+
+    # Exact pct field names
+    if s.startswith("pct_"):
+        return s if s in PCT_FIELDS else None
+
+    # Fuzzy substring matching (priority order)
+    if "cooper" in s:
+        return "pct_cooper"
+    if "mullica" in s or s == "mh":
+        return "pct_inspira_mhw"
+    if "vineland" in s or "elmer" in s or "veb" in s:
+        return "pct_inspira_veb"
+    if "mannington" in s:
+        return "pct_mannington"
+    if "virtua" in s:
+        return "pct_virtua"
+    if "cape" in s:
+        return "pct_cape"
+
+    return None
+
+
+def parse_pct_value(text):
+    """Parse a percentage value from flexible user input.
+
+    Accepts: '0%', '100%', '67%', '0.67', '0', '1.0', '.5', etc.
+    Returns float (0.0–1.0 scale) or None if unparseable.
+    """
+    s = text.strip()
+    if not s:
+        return None
+    try:
+        if s.endswith("%"):
+            return float(s[:-1]) / 100.0
+        val = float(s)
+        # If > 1.0, assume the user meant a percentage (e.g., '67' → 0.67)
+        if val > 1.0:
+            return val / 100.0
+        return val
+    except ValueError:
+        return None
+
+
+def parse_pct_overrides(pname, tags_data):
+    """Collect and parse all pct_override tags for a provider.
+
+    Rule format examples:
+        'cooper: 0%, mh: 100%'
+        'pct_cooper=0; pct_inspira_mhw=1.0'
+        'virtua: 50%, cooper: 50%'
+
+    Returns:
+        (overrides_dict, parse_warnings)
+        overrides_dict: {pct_field: float_value, ...}
+        parse_warnings: list of warning strings for bad input
+    """
+    ptags = tags_data.get(pname, [])
+    overrides = {}
+    warnings = []
+
+    for t in ptags:
+        if t["tag"].lower().strip() != "pct_override":
+            continue
+
+        rule = t["rule"]
+        # Split on comma or semicolon
+        pieces = re.split(r"[,;]", rule)
+        for piece in pieces:
+            piece = piece.strip()
+            if not piece:
+                continue
+
+            # Split on ':' or '='
+            if ":" in piece:
+                key, val = piece.split(":", 1)
+            elif "=" in piece:
+                key, val = piece.split("=", 1)
+            else:
+                warnings.append(f"Cannot parse override piece: '{piece}'")
+                continue
+
+            field = resolve_site_field(key)
+            if field is None:
+                warnings.append(f"Unrecognized site name: '{key.strip()}'")
+                continue
+
+            value = parse_pct_value(val)
+            if value is None:
+                warnings.append(f"Cannot parse value: '{val.strip()}'")
+                continue
+
+            overrides[field] = value
+
+    return overrides, warnings
+
+
+def apply_pct_overrides(pdata, overrides):
+    """Apply pct_override values and validate the result sums to 1.0.
+
+    Args:
+        pdata: provider data dict (from load_providers)
+        overrides: dict of pct_field -> new_value
+
+    Returns:
+        (effective_pcts, sum_warning)
+        effective_pcts: dict of pct_field -> value (all 6 fields)
+        sum_warning: str if sum != 1.0 (within ±0.01), else None
+    """
+    effective = {f: pdata.get(f, 0) for f in PCT_FIELDS}
+    for field, value in overrides.items():
+        effective[field] = value
+
+    total = sum(effective.values())
+    sum_warning = None
+    if abs(total - 1.0) > 0.01:
+        sum_warning = f"pct fields sum to {total:.2f} (expected 1.0) after overrides"
+
+    return effective, sum_warning
+
+
 def check_provider_distribution(day_assignments, providers, tags_data):
     """Check 3 — Section 3.4 (SOFT RULE)
 
@@ -309,25 +443,47 @@ def check_provider_distribution(day_assignments, providers, tags_data):
     We must aggregate days across all sites that share a pct column before
     comparing against the target, NOT compare each sub-site individually.
     """
-    # Count days per provider per SITE
-    prov_site_days = defaultdict(lambda: defaultdict(int))
-    prov_total_days = defaultdict(int)
+    # Count UNIQUE days per provider per site (deduplicate multi-service days)
+    prov_site_dates = defaultdict(lambda: defaultdict(set))  # provider -> site -> set of dates
+    prov_all_dates = defaultdict(set)                        # provider -> set of all dates
 
     for a in day_assignments:
-        prov_site_days[a["provider"]][a["site"]] += 1
-        prov_total_days[a["provider"]] += 1
+        prov_site_dates[a["provider"]][a["site"]].add(a["date"])
+        prov_all_dates[a["provider"]].add(a["date"])
 
     # Aggregate by pct_field (site group), not individual site
     results = []
-    for pname, site_counts in prov_site_days.items():
+    override_info = {}  # pname -> {"overrides": dict, "warning": str|None, "effective": dict}
+    for pname, site_date_sets in prov_site_dates.items():
         if pname not in providers:
             continue
         pdata = providers[pname]
-        total = prov_total_days[pname]
+        total = len(prov_all_dates[pname])
         if total == 0:
             continue
 
-        # Sum days by pct_field (site group)
+        # Check for pct_override tags
+        overrides, parse_warnings = parse_pct_overrides(pname, tags_data)
+        if overrides:
+            effective_pcts, sum_warning = apply_pct_overrides(pdata, overrides)
+            override_info[pname] = {
+                "overrides": overrides,
+                "warning": sum_warning,
+                "effective": effective_pcts,
+                "parse_warnings": parse_warnings,
+            }
+        else:
+            effective_pcts = {f: pdata.get(f, 0) for f in PCT_FIELDS}
+            if parse_warnings:
+                override_info[pname] = {
+                    "overrides": {},
+                    "warning": None,
+                    "effective": effective_pcts,
+                    "parse_warnings": parse_warnings,
+                }
+
+        # Convert date sets to counts, then sum by pct_field (site group)
+        site_counts = {site: len(dates) for site, dates in site_date_sets.items()}
         group_days = defaultdict(int)       # pct_field -> total days
         group_sites = defaultdict(list)     # pct_field -> [(site, count), ...]
         for site, count in site_counts.items():
@@ -339,7 +495,7 @@ def check_provider_distribution(day_assignments, providers, tags_data):
 
         for pct_field, combined_count in group_days.items():
             actual_pct = combined_count / total
-            target_pct = pdata.get(pct_field, 0)
+            target_pct = effective_pcts.get(pct_field, 0)
 
             diff = actual_pct - target_pct
             if abs(diff) > 0.20 and combined_count >= 3:
@@ -364,7 +520,7 @@ def check_provider_distribution(day_assignments, providers, tags_data):
                 })
 
     results.sort(key=lambda x: abs(x["diff_pct"]), reverse=True)
-    return results
+    return results, override_info
 
 
 def _site_group_name(pct_field):
@@ -392,16 +548,16 @@ def check_capacity_limits(day_assignments, providers, tags_data, prior_actuals):
     when building the schedule. We assume the manual scheduler checked that.
     What we're validating is that the annual cap was not exceeded.
     """
-    # Count weeks and weekends per provider from Block 3 day assignments
-    prov_week_nums = defaultdict(set)  # provider -> set of week_nums with weekday work
-    prov_we_nums = defaultdict(set)    # provider -> set of week_nums with weekend work
+    # Count weekday days and weekend days per provider (unique dates to dedup multi-service)
+    # Then divide by 5 (weekdays) and 2 (weekends) — same method as recalculate_prior_actuals
+    prov_weekday_dates = defaultdict(set)  # provider -> set of weekday dates
+    prov_weekend_dates = defaultdict(set)  # provider -> set of weekend dates
 
     for a in day_assignments:
-        wk = get_week_num(a["date"])
         if is_weekend_day(a["date"]):
-            prov_we_nums[a["provider"]].add(wk)
+            prov_weekend_dates[a["provider"]].add(a["date"])
         else:
-            prov_week_nums[a["provider"]].add(wk)
+            prov_weekday_dates[a["provider"]].add(a["date"])
 
     violations = []
     for pname, pdata in providers.items():
@@ -415,9 +571,25 @@ def check_capacity_limits(day_assignments, providers, tags_data, prior_actuals):
         if annual_wk == 0 and annual_we == 0:
             continue
 
-        # Block 3 actuals (from parsed schedule)
-        block3_wk = len(prov_week_nums.get(pname, set()))
-        block3_we = len(prov_we_nums.get(pname, set()))
+        # Block 3 actuals: days / days_per_week for weeks, days / 2 for weekends
+        # Matches recalculate_prior_actuals.py method (line 365)
+        # days_per_week tag overrides the default divisor of 5 (e.g., Newell = 4)
+        days_per_week = 5
+        dpw_rules = get_tag_rules(pname, "days_per_week", tags_data)
+        if not dpw_rules:
+            # Tag name may include the value, e.g. "days_per_week: 4"
+            ptags = tags_data.get(pname, [])
+            for t in ptags:
+                if t["tag"].startswith("days_per_week"):
+                    dpw_rules = [t["tag"] + " " + t["rule"]]
+                    break
+        if dpw_rules:
+            # Extract first integer from the combined tag+rule text
+            m = re.search(r'\d+', dpw_rules[0])
+            if m:
+                days_per_week = int(m.group())
+        block3_wk = round(len(prov_weekday_dates.get(pname, set())) / days_per_week, 1)
+        block3_we = round(len(prov_weekend_dates.get(pname, set())) / 2, 1)
 
         # Prior actuals (Blocks 1+2 from prior_actuals.json)
         prior = prior_actuals.get(pname, {})
@@ -533,8 +705,12 @@ def check_availability(day_assignments, providers, unavailable_dates, name_map):
 
     Availability is SACRED. If a provider marks a day as unavailable,
     they are NEVER scheduled that day. No exceptions.
+
+    Multiple services on the same unavailable day are merged into one
+    violation (with all services listed).
     """
-    violations = []
+    # Collect all violations keyed by (provider, date) to merge multi-service days
+    seen = {}  # (provider, date) -> violation dict
     for a in day_assignments:
         pname = a["provider"]
         if pname not in providers:
@@ -547,14 +723,25 @@ def check_availability(day_assignments, providers, unavailable_dates, name_map):
         unav = unavailable_dates.get(json_name, set())
         date_str = a["date"].strftime("%Y-%m-%d")
         if date_str in unav:
-            violations.append({
-                "provider": pname,
-                "date": a["date"],
-                "service": a["service"],
-                "site": a["site"],
-                "note": a["note"],
-            })
-    return violations
+            key = (pname, a["date"])
+            if key not in seen:
+                seen[key] = {
+                    "provider": pname,
+                    "date": a["date"],
+                    "services": [a["service"]],
+                    "site": a["site"],
+                    "note": a["note"],
+                    # Keep singular "service" for backward compat with renderer
+                    "service": a["service"],
+                }
+            else:
+                seen[key]["services"].append(a["service"])
+                # Merge notes if the new one is non-empty and different
+                if a["note"] and a["note"] != seen[key]["note"]:
+                    existing = seen[key]["note"]
+                    seen[key]["note"] = f"{existing}; {a['note']}" if existing else a["note"]
+
+    return list(seen.values())
 
 
 def check_conflict_pairs(day_assignments, providers):
@@ -858,7 +1045,15 @@ def main():
     print(f"\n{'=' * 100}")
     print("[CHECK 3] PROVIDER SITE DISTRIBUTION — Section 3.4 (SOFT, ±5-10% expected)")
     print(f"{'=' * 100}")
-    dist_issues = check_provider_distribution(day, providers, tags_data)
+    dist_issues, override_info = check_provider_distribution(day, providers, tags_data)
+    if override_info:
+        print(f"  pct_override applied for: {', '.join(sorted(override_info.keys()))}")
+        for pname, info in sorted(override_info.items()):
+            if info.get("warning"):
+                print(f"    ⚠ {pname}: {info['warning']}")
+            if info.get("parse_warnings"):
+                for w in info["parse_warnings"]:
+                    print(f"    ⚠ {pname}: {w}")
     if dist_issues:
         print(f"  Providers with >20% deviation: {len(set(d['provider'] for d in dist_issues))}")
         print(f"\n  {'Provider':<25s} {'Site':<20s} {'Actual':>8s} {'Target':>8s} {'Diff':>8s}  Days")

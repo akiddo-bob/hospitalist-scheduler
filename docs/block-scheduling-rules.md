@@ -119,6 +119,7 @@ tag (a provider can have multiple tags).
 | `pa_rotation` | Clinical + PA week split | Read `rule` field for specific week counts |
 | `scheduling_priority` | Special scheduling note | Read `rule` field for details |
 | `night_constraint` | Night shift placement rule | Out of scope for current engine |
+| `pct_override` | Temporary site distribution override | Block-level pct targets replace annual values for Check 3. Format: `site: value, site: value` (e.g., `cooper: 0%, mh: 100%`). Supported site names: cooper, mh/mullica, vineland, elmer, veb, mannington, virtua, cape. Values can be `0%`, `100%`, `0.33`, etc. Sum of all pct fields must equal 1.0 after overrides are applied. |
 | `note` | General note | Informational — review `rule` field |
 
 The engine should attempt to interpret free-text `rule` fields for tags like
@@ -396,6 +397,7 @@ Any service matching these patterns is **excluded** from prior work counts:
 | Cape RMD | Name contains `Cape RMD` | Cape RMD On-Call |
 | Long Call | Name contains `Long Call` | Long Call H1 7a-8a, Teaching Long Call, Mullica Hill Long Call |
 | Direct Care Long Call | Name starts with `Direct Care Long Call` | Direct Care Long Call 1 AM, Direct Care Long Call 2 PM |
+| Early Call | Name contains `Early Call` | Cape Early Call |
 | Virtua Coverage | Name contains `Virtua` AND `Coverage` | Virtua Marlton PM Coverage, Virtua Mt Holly AM Coverage |
 | ~~UM~~ | ~~Name is exactly `UM` (standalone)~~ | **REMOVED** — UM is a physician shift and is now **included** as day work |
 | Consults | Name contains `Consult` (except Hospital Medicine Consults) | Night Direct Care Admitter 2 (Consult), Woodbury Consult Physician |
@@ -414,6 +416,7 @@ Cape APP Cross Coverage
 Cape APP- Night Cross Coverage
 Cape Admin Staff
 Cape Day APP 1
+Cape Early Call
 Cape LTC-SAR  On Call APP overnight
 Cape LTC-SAR Day APP
 Cape LTC-SAR On call APP
@@ -565,7 +568,6 @@ Cape ATT 5
 Cape ATT 6
 Cape ATT 7
 Cape ATT 8
-Cape Early Call
 Cape Extra
 Cape LTC-SAR on call Physician
 Cape MAH

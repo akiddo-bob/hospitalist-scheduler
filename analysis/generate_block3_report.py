@@ -26,6 +26,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from analysis.validate_block3 import (
     BLOCK_3_START, BLOCK_3_END, MEMORIAL_DAY_WEEK_START, MEMORIAL_DAY_WEEK_END,
+    PCT_FIELDS,
     parse_block3, filter_day_only, service_to_site,
     get_week_num, is_weekend_day,
     check_site_eligibility, check_site_demand, check_provider_distribution,
@@ -304,26 +305,23 @@ def render_check2(demand_issues, sites_demand, day_assignments):
     )
 
 
-def render_check3(dist_issues, prov_day_map, providers, day_assignments):
-    if not dist_issues:
+def render_check3(dist_issues, prov_day_map, providers, day_assignments, override_info=None):
+    if override_info is None:
+        override_info = {}
+
+    if not dist_issues and not override_info:
         return "<p class='pass'>✅ All providers within 20% of their target distribution.</p>"
 
-    # Pre-compute actual days by provider x site-group for the full allocation table
-    prov_group_days = defaultdict(lambda: defaultdict(int))
-    prov_group_sites = defaultdict(lambda: defaultdict(list))
-    prov_total = defaultdict(int)
+    # Pre-compute actual days by provider x site-group using UNIQUE dates (dedup multi-service days)
+    prov_group_dates = defaultdict(lambda: defaultdict(set))   # provider -> pct_field -> set of dates
+    prov_group_sites = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))  # provider -> pct_field -> site -> set of dates
+    prov_all_dates = defaultdict(set)
     for a in day_assignments:
         pct_field = SITE_PCT_MAP.get(a["site"])
         if pct_field:
-            prov_group_days[a["provider"]][pct_field] += 1
-            prov_total[a["provider"]] += 1
-            # Track sub-sites for breakdown
-            existing = [s for s, c in prov_group_sites[a["provider"]][pct_field] if s == a["site"]]
-            if not existing:
-                prov_group_sites[a["provider"]][pct_field].append([a["site"], 0])
-            for pair in prov_group_sites[a["provider"]][pct_field]:
-                if pair[0] == a["site"]:
-                    pair[1] += 1
+            prov_group_dates[a["provider"]][pct_field].add(a["date"])
+            prov_group_sites[a["provider"]][pct_field][a["site"]].add(a["date"])
+            prov_all_dates[a["provider"]].add(a["date"])
 
     # All pct fields in display order
     all_pct_fields = [
@@ -339,26 +337,48 @@ def render_check3(dist_issues, prov_day_map, providers, day_assignments):
     for d in dist_issues:
         by_prov[d["provider"]].append(d)
 
+    # Also include providers with overrides but no violations (for display)
+    all_prov_names = set(by_prov.keys()) | set(override_info.keys())
+
     items = []
-    for pname in sorted(by_prov, key=lambda p: max(abs(x["diff_pct"]) for x in by_prov[p]), reverse=True):
-        dlist = by_prov[pname]
+    override_only_items = []  # providers with overrides but no violations
+
+    for pname in sorted(all_prov_names):
+        dlist = by_prov.get(pname, [])
         pdata = providers.get(pname, {})
-        total = prov_total.get(pname, 0)
+        total = len(prov_all_dates.get(pname, set()))
+        has_override = pname in override_info and override_info[pname].get("overrides")
+        ov_info = override_info.get(pname, {})
+
+        # Get effective pcts (overridden or raw)
+        if has_override:
+            effective_pcts = ov_info["effective"]
+        else:
+            effective_pcts = {f: pdata.get(f, 0) for f in PCT_FIELDS}
 
         # Full allocation table: ALL site groups with target vs actual
         alloc_rows = []
         for pct_field, label in all_pct_fields:
-            target = pdata.get(pct_field, 0)
-            actual_days = prov_group_days.get(pname, {}).get(pct_field, 0)
+            target = effective_pcts.get(pct_field, 0)
+            annual_target = pdata.get(pct_field, 0)
+            is_overridden = has_override and pct_field in ov_info["overrides"]
+            actual_days = len(prov_group_dates.get(pname, {}).get(pct_field, set()))
             actual_pct = actual_days / total if total > 0 else 0
             diff = actual_pct - target
 
             # Sub-site breakdown
-            sub_sites = prov_group_sites.get(pname, {}).get(pct_field, [])
+            site_date_map = prov_group_sites.get(pname, {}).get(pct_field, {})
+            sub_sites = [(site, len(dates)) for site, dates in site_date_map.items()]
             if len(sub_sites) > 1:
                 breakdown = " (" + ", ".join(f"{s} {c}" for s, c in sorted(sub_sites)) + ")"
             else:
                 breakdown = ""
+
+            # Target display: show override annotation
+            if is_overridden:
+                target_display = f"{target:.0%} <span style='color:#999;font-size:0.85em'>(annual: {annual_target:.0%})</span>"
+            else:
+                target_display = f"{target:.0%}"
 
             # Color based on deviation
             if target == 0 and actual_days == 0:
@@ -379,10 +399,23 @@ def render_check3(dist_issues, prov_day_map, providers, day_assignments):
             else:
                 alloc_rows.append(
                     f"<tr{cls}><td>{esc(label)}{esc(breakdown)}</td>"
-                    f"<td class='num'>{actual_pct:.0%}</td><td class='num'>{target:.0%}</td>"
+                    f"<td class='num'>{actual_pct:.0%}</td><td class='num'>{target_display}</td>"
                     f"<td class='num'>{diff:+.0%}</td>"
                     f"<td>{actual_days}/{total} days</td></tr>"
                 )
+
+        # Override and warning badges
+        override_badges = ""
+        if has_override:
+            overrides_desc = ", ".join(
+                f"{f.replace('pct_', '')}: {v:.0%}" for f, v in ov_info["overrides"].items()
+            )
+            override_badges += f' {badge("overridden", "blue")}'
+            if ov_info.get("warning"):
+                override_badges += f' {badge(ov_info["warning"], "yellow")}'
+            if ov_info.get("parse_warnings"):
+                for w in ov_info["parse_warnings"]:
+                    override_badges += f' {badge(w, "yellow")}'
 
         alloc_table = (
             '<h5 style="margin:8px 0 4px;">Full site allocation (all groups):</h5>'
@@ -391,20 +424,23 @@ def render_check3(dist_issues, prov_day_map, providers, day_assignments):
         )
 
         # Flagged deviations (>20%) — the original violation list
-        flag_rows = []
-        for d in sorted(dlist, key=lambda x: abs(x["diff_pct"]), reverse=True):
-            cls = "overfill" if d["diff_pct"] > 0 else "shortage"
-            flag_rows.append(
-                f"<tr class='{cls}'><td>{esc(d['site'])}</td>"
-                f"<td>{d['actual_pct']:.0%}</td><td>{d['target_pct']:.0%}</td>"
-                f"<td class='num'>{d['diff_pct']:+.0%}</td>"
-                f"<td>{d['actual_days']}/{d['total_days']} days</td></tr>"
+        if dlist:
+            flag_rows = []
+            for d in sorted(dlist, key=lambda x: abs(x["diff_pct"]), reverse=True):
+                cls = "overfill" if d["diff_pct"] > 0 else "shortage"
+                flag_rows.append(
+                    f"<tr class='{cls}'><td>{esc(d['site'])}</td>"
+                    f"<td>{d['actual_pct']:.0%}</td><td>{d['target_pct']:.0%}</td>"
+                    f"<td class='num'>{d['diff_pct']:+.0%}</td>"
+                    f"<td>{d['actual_days']}/{d['total_days']} days</td></tr>"
+                )
+            flag_table = (
+                '<h5 style="margin:8px 0 4px;color:var(--yellow);">Flagged deviations (&gt;20%):</h5>'
+                '<table class="detail-table"><thead><tr><th>Site Group</th><th>Actual</th><th>Target</th><th>Diff</th><th>Days</th></tr></thead>'
+                f"<tbody>{''.join(flag_rows)}</tbody></table>"
             )
-        flag_table = (
-            '<h5 style="margin:8px 0 4px;color:var(--yellow);">Flagged deviations (&gt;20%):</h5>'
-            '<table class="detail-table"><thead><tr><th>Site Group</th><th>Actual</th><th>Target</th><th>Diff</th><th>Days</th></tr></thead>'
-            f"<tbody>{''.join(flag_rows)}</tbody></table>"
-        )
+        else:
+            flag_table = '<p style="color:var(--green);margin:8px 0;">No deviations &gt;20% (within tolerance after override)</p>'
 
         # Full Block 3 schedule for context
         all_dates = sorted(prov_day_map.get(pname, {}).keys())
@@ -415,14 +451,48 @@ def render_check3(dist_issues, prov_day_map, providers, day_assignments):
         )
 
         detail = alloc_table + flag_table + full_schedule
-        worst = max(dlist, key=lambda x: abs(x["diff_pct"]))
-        summary = f"<strong>{esc(pname)}</strong> &mdash; worst deviation: {worst['diff_pct']:+.0%} at {esc(worst['site'])}"
-        items.append(collapsible(summary, detail))
 
-    return (
-        f"<p>{badge(str(len(set(d['provider'] for d in dist_issues))) + ' providers', 'yellow')} "
-        f"with &gt;20% deviation ({len(dist_issues)} site/provider combos)</p>"
-    ) + "\n".join(items)
+        if dlist:
+            worst = max(dlist, key=lambda x: abs(x["diff_pct"]))
+            summary = f"<strong>{esc(pname)}</strong>{override_badges} &mdash; worst deviation: {worst['diff_pct']:+.0%} at {esc(worst['site'])}"
+            items.append(collapsible(summary, detail))
+        elif has_override:
+            summary = f"<strong>{esc(pname)}</strong>{override_badges} &mdash; within tolerance"
+            override_only_items.append(collapsible(summary, detail))
+
+    # Sort violation items by worst deviation
+    prov_worst = {}
+    for d in dist_issues:
+        p = d["provider"]
+        if p not in prov_worst or abs(d["diff_pct"]) > abs(prov_worst[p]):
+            prov_worst[p] = d["diff_pct"]
+    items.sort(key=lambda html: -abs(prov_worst.get(
+        html.split("<strong>")[1].split("</strong>")[0] if "<strong>" in html else "", 0)))
+
+    result_parts = []
+
+    if dist_issues:
+        result_parts.append(
+            f"<p>{badge(str(len(set(d['provider'] for d in dist_issues))) + ' providers', 'yellow')} "
+            f"with &gt;20% deviation ({len(dist_issues)} site/provider combos)</p>"
+        )
+    else:
+        result_parts.append("<p class='pass'>✅ All providers within 20% of their target distribution.</p>")
+
+    if override_info:
+        override_count = sum(1 for info in override_info.values() if info.get("overrides"))
+        if override_count:
+            result_parts.append(
+                f"<p>{badge(str(override_count) + ' overridden', 'blue')} "
+                f"providers using pct_override tags for block-level targets</p>"
+            )
+
+    result_parts.extend(items)
+    if override_only_items:
+        result_parts.append('<h4 style="margin-top:16px;">Overridden providers (within tolerance):</h4>')
+        result_parts.extend(override_only_items)
+
+    return "\n".join(result_parts)
 
 
 def render_check4(cap_violations, prov_day_map, day_assignments):
@@ -576,9 +646,12 @@ def render_check6(avail_violations, prov_day_map):
             has_swap = any(kw in (v.get("note","") or "").lower() for kw in ["swap","switch","trade","payback","covering"])
             swap_badge = ' ' + badge("swap note", "blue") if has_swap else ""
             we_cls = ' class="weekend-row"' if is_weekend_day(v["date"]) else ""
+            # Show all services if multiple on same day (merged by validate_block3)
+            services = v.get("services", [v["service"]])
+            svc_text = " + ".join(esc(s) for s in services)
             detail_rows.append(
                 f"<tr{we_cls}><td>{fmt_date(v['date'])}</td><td>{v['date']}</td>"
-                f"<td>{esc(v['site'])}</td><td>{esc(v['service'])}{note_str}{swap_badge}</td></tr>"
+                f"<td>{esc(v['site'])}</td><td>{svc_text}{note_str}{swap_badge}</td></tr>"
             )
         violation_table = (
             '<h5 style="margin:8px 0 4px;color:var(--red);">Unavailable dates where provider was scheduled:</h5>'
@@ -976,7 +1049,7 @@ def main():
     # Run all 12 checks
     elig_violations = check_site_eligibility(day, providers, tags_data)
     demand_issues = check_site_demand(day, sites_demand)
-    dist_issues = check_provider_distribution(day, providers, tags_data)
+    dist_issues, override_info = check_provider_distribution(day, providers, tags_data)
     cap_violations = check_capacity_limits(day, providers, tags_data, prior_actuals)
     hard_stretches, extended_stretches, window_violations = check_consecutive_stretches(day, providers)
     avail_violations = check_availability(day, providers, unavailable_dates, name_map)
@@ -1041,7 +1114,7 @@ def main():
     sections.append('<h2><span class="check-num">Check 3</span> Provider Site Distribution <span class="badge badge-yellow" style="font-size:0.75rem">SOFT</span></h2>')
     sections.append('<div class="section-card">')
     sections.append('<p class="hint">Provider site distribution vs percentage targets from the spreadsheet. Flags deviations &gt;20%. Some flexibility is expected (&plusmn;5-10%).</p>')
-    sections.append(render_check3(dist_issues, prov_day_map, providers, day))
+    sections.append(render_check3(dist_issues, prov_day_map, providers, day, override_info))
     sections.append("</div>")
 
     # Check 4

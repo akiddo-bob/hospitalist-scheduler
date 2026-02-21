@@ -88,10 +88,13 @@ Each provider has target percentages for how their time should be split across s
 
 A provider with `pct_virtua = 1.0` who works 12 days at Willingboro and 37 at Voorhees is at 100% Virtua — that's on target.
 
+**Block-level overrides (pct_override tag):** Some providers need temporary distribution targets that differ from their annual percentages. Add a `pct_override` tag in Provider Tags with the format `site: value, site: value` (e.g., `cooper: 0%, mh: 100%`). The check uses these overridden values instead of the annual targets, and the report shows an "overridden" badge with the original annual value for reference. The sum of all pct fields must still equal 1.0 after overrides are applied — a warning badge appears if it doesn't.
+
 **Report detail:** For each flagged provider, shows:
-1. **Full allocation table** — all 6 site groups with actual days, actual %, target %, and the difference. This lets you see the whole picture, not just the violation.
+1. **Full allocation table** — all 6 site groups with actual days, actual %, target %, and the difference. Overridden targets show the annual value in parentheses.
 2. **Flagged deviations** — the specific groups over the 20% threshold.
 3. **Full Block 3 schedule** — every date, site, and service.
+4. **Overridden providers within tolerance** — providers with pct_override tags who pass all checks are shown separately at the bottom with their allocation tables.
 
 ### Check 4 — Annual Capacity (HARD)
 **Rules doc:** Section 2.4

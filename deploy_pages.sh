@@ -27,27 +27,23 @@ if [[ "${1:-}" != "--skip" ]]; then
 fi
 
 # ── 2. Verify output files exist ─────────────────────────────────
-HTML_FILES=(
-    output/index.html
-    output/inputs.html
-    output/rules.html
-    output/block_schedule_report_v1.html
-    output/block_schedule_report_v2.html
-    output/block_schedule_report_v3.html
-    output/block_schedule_report_v4.html
-    output/block_schedule_report_v5.html
-)
+# Collect all V3 HTML files (index + inputs + per-seed reports)
+HTML_FILES=()
+for f in output/v3/v3_index.html output/v3/v3_inputs.html output/v3/report_seed*.html; do
+    [[ -f "$f" ]] && HTML_FILES+=("$f")
+done
+
+if [[ ${#HTML_FILES[@]} -eq 0 ]]; then
+    echo "ERROR: No V3 HTML files found in output/v3/"
+    echo "  Run: .venv/bin/python3 -m block.engines.v3.run --seeds 42 7 123 256 999"
+    exit 1
+fi
 
 for f in "${HTML_FILES[@]}"; do
-    if [[ ! -f "$f" ]]; then
-        echo "ERROR: Missing $f — run generate_block_report.py first"
-        exit 1
-    fi
     # Verify it's actually HTML, not git-crypt encrypted
     if head -c 10 "$f" | grep -q "GITCRYPT"; then
         echo "ERROR: $f is git-crypt encrypted."
-        echo "  Delete the encrypted files and regenerate:"
-        echo "    rm output/*.html && .venv/bin/python3 generate_block_report.py"
+        echo "  Delete the encrypted files and regenerate."
         exit 1
     fi
 done
@@ -60,7 +56,7 @@ echo "▸ All ${#HTML_FILES[@]} HTML files verified (plaintext)"
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
-# Copy report files into a reports/ subdirectory and create a gate index.html
+# Copy V3 report and create a gate index.html
 .venv/bin/python3 - "$TMPDIR" "${HTML_FILES[@]}" << 'PYTHON_SCRIPT'
 import sys, os, hashlib
 
@@ -77,7 +73,6 @@ os.makedirs(reports_dir, exist_ok=True)
 
 for filepath in files:
     basename = os.path.basename(filepath)
-    # Copy the real report into reports/ subdirectory
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
     with open(os.path.join(reports_dir, basename), 'w', encoding='utf-8') as f:
@@ -136,7 +131,7 @@ function showApp(){{
   document.getElementById("gate").style.display="none";
   var f=document.getElementById("app");
   f.style.display="block";
-  f.src="reports/index.html";
+  f.src="reports/v3_index.html";
 }}
 function checkPw(){{
   var p=document.getElementById("pw").value;
@@ -167,6 +162,7 @@ if git show-ref --verify --quiet refs/heads/gh-pages; then
     git worktree add "$WORKTREE" gh-pages 2>/dev/null
     # Remove old files in worktree
     rm -f "$WORKTREE"/*.html
+    rm -rf "$WORKTREE/reports"
 else
     # Create orphan branch via worktree
     git worktree add --detach "$WORKTREE" 2>/dev/null

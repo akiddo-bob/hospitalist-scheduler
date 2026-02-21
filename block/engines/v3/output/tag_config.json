@@ -1,0 +1,1251 @@
+{
+  "metadata": {
+    "generated_at": "2026-02-21T00:28:59",
+    "source_file": "hospitalist_scheduler.xlsx",
+    "total_tags": 96,
+    "tags_recognized": 96,
+    "tags_unrecognized": 0,
+    "providers_with_tags": 85,
+    "data_quality_issues": 5
+  },
+  "tag_definitions": {
+    "do_not_schedule": {
+      "engine_status": "ACTIVE",
+      "description": "Hard exclude \u2014 provider is completely skipped by all engines, validation, and analysis.",
+      "rule_format": "Free text (reason). Engine only checks for tag presence, ignores rule content.",
+      "example": "do_not_schedule",
+      "notes": "Use for providers on extended leave, terminated, or otherwise unavailable for the entire block."
+    },
+    "no_elmer": {
+      "engine_status": "ACTIVE",
+      "description": "Removes Elmer from this provider's eligible sites.",
+      "rule_format": "Free text (reason). Engine only checks for tag presence.",
+      "example": "No Elmer",
+      "notes": "If rule mentions additional restrictions (e.g., 'only Vineland'), those are NOT enforced by this tag. Use additional tags or adjust pct columns."
+    },
+    "no_vineland": {
+      "engine_status": "ACTIVE",
+      "description": "Removes Vineland from this provider's eligible sites.",
+      "rule_format": "Free text (reason). Engine only checks for tag presence.",
+      "example": "No Vineland, 60% Elmer",
+      "notes": "Same as no_elmer \u2014 only the site removal is enforced. Other constraints in the rule text are not parsed."
+    },
+    "days_per_week": {
+      "engine_status": "ACTIVE",
+      "description": "Overrides the default 5-day divisor for week calculations. Used in capacity checks and stretch risk.",
+      "rule_format": "Tag name must include the value: 'days_per_week: N'. Rule field is free text (reason).",
+      "example": "never works on Fridays",
+      "notes": "Non-standard: the value is embedded in the tag name, not the rule. Tag name must be exactly 'days_per_week: N' where N is the number of days."
+    },
+    "swing_shift": {
+      "engine_status": "ACTIVE",
+      "description": "Marks provider as having a day/swing split. Bumps stretch risk one level due to compressed day schedule.",
+      "rule_format": "Free text describing the split breakdown.",
+      "example": "153 DAYS/25 SWING/26 NIGHT",
+      "notes": "Rule text is informational \u2014 engine only checks for tag presence. The actual shift counts come from the Providers tab."
+    },
+    "pa_rotation": {
+      "engine_status": "ACTIVE",
+      "description": "Marks provider as having PA (physician assistant supervision) weeks. Reduces effective clinical density in stretch risk.",
+      "rule_format": "Free text describing the PA allocation.",
+      "example": "14 weeks as PA",
+      "notes": "Engine checks for tag presence and parses week count from rule text where possible."
+    },
+    "pct_override": {
+      "engine_status": "ACTIVE",
+      "description": "Overrides annual site percentage targets for the current block. Used in Check 3 (site distribution validation).",
+      "rule_format": "Comma-separated site:value pairs. Sites matched fuzzy. Values are percentages (with or without %).",
+      "example": "cooper: 0%, mh: 100%",
+      "notes": "Site names are fuzzy-matched (e.g., 'mh' \u2192 Mullica Hill, 'veb' \u2192 Vineland/Elmer). Values should sum to ~100%."
+    },
+    "location_restriction": {
+      "engine_status": "PLANNED",
+      "description": "Restricts provider to specific sites. More flexible than no_elmer/no_vineland.",
+      "rule_format": "To be defined. Proposed: comma-separated list of allowed sites, OR 'only: site1, site2' / 'exclude: site1, site2'.",
+      "example": "Mannington only",
+      "notes": "Currently not enforced. 6 providers have this tag. Could be enforced by filtering eligible sites."
+    },
+    "scheduling_priority": {
+      "engine_status": "PLANNED",
+      "description": "Defines the order in which this provider's assignments should be made.",
+      "rule_format": "To be defined. Proposed: comma-separated ordered list of assignment types/sites.",
+      "example": "Schedule nights first, then Cape, then Cooper",
+      "notes": "Currently not enforced. 5 providers have this. Would need engine support for phased per-provider assignment."
+    },
+    "night_constraint": {
+      "engine_status": "PLANNED",
+      "description": "Constraints on night shift assignments \u2014 no nights, specific night limits, day-of-week restrictions.",
+      "rule_format": "To be defined. Will depend on night scheduling architecture.",
+      "example": "Can not work M,T,W nights",
+      "notes": "Currently not enforced. 7 providers have this. Will be needed when night scheduling is built."
+    },
+    "service_restriction": {
+      "engine_status": "PLANNED",
+      "description": "Teaching vs non-teaching service splits within a site.",
+      "rule_format": "To be defined. Will depend on service-level assignment architecture.",
+      "example": "80% teaching, 20% nonteaching at Cooper",
+      "notes": "Currently not enforced. 2 providers have this. Engine currently assigns to sites, not services."
+    },
+    "split_department": {
+      "engine_status": "PLANNED",
+      "description": "Provider splits time between IM and another department (e.g., Peds). IM allocation should be reduced accordingly.",
+      "rule_format": "To be defined. Proposed: 'department: N weeks, N weekends'.",
+      "example": "Peds 0.35: 10 weeks and 4 weekends per year",
+      "notes": "Currently not enforced. 2 providers have this. Providers tab annual_weeks may or may not already reflect the split \u2014 needs confirmation."
+    },
+    "protected_time": {
+      "engine_status": "PLANNED",
+      "description": "Provider has reduced allocation due to protected/admin time.",
+      "rule_format": "To be defined. Proposed: 'N weeks, N weekends' or reference to Providers tab.",
+      "example": "3 wks & 4.5 wknd - new protected time",
+      "notes": "Currently not enforced. 1 provider has this. Providers tab annual_weeks may already reflect this \u2014 needs confirmation."
+    },
+    "no_um": {
+      "engine_status": "PLANNED",
+      "description": "Provider cannot be assigned UM (utilization management) shifts.",
+      "rule_format": "Free text. Engine checks for tag presence only.",
+      "example": "No UM",
+      "notes": "Currently not enforced. 1 provider has this. Service-level constraint \u2014 depends on service assignment being built."
+    },
+    "fmla": {
+      "engine_status": "INFO",
+      "description": "Records FMLA/leave history. Informational reference for the scheduler.",
+      "rule_format": "Structured text: 'LeaveBegDate: YYYY-MM-DD; LeaveEndDate: YYYY-MM-DD; Reason-Relationship: text; Return to work: YYYY-MM-DD'",
+      "example": "LeaveBegDate: 2025-04-29; LeaveEndDate: 2025-06-15; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-06-16",
+      "notes": "Engine does not read this. Leave periods should be reflected in availability JSONs or do_not_schedule tags. Kept as audit trail."
+    },
+    "note": {
+      "engine_status": "INFO",
+      "description": "General human-readable note. The engine does not read or act on this.",
+      "rule_format": "Free text.",
+      "example": "Prefers 5 PM shifts",
+      "notes": "Catch-all for information that doesn't fit another tag. If a note describes an enforceable constraint, consider converting it to a proper typed tag."
+    }
+  },
+  "provider_tags": {
+    "ABRAHAM, ANEY": [],
+    "AHMED, SANAINA": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer, only Vineland, MH",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "AJEMIAN, ANDREW": [
+      {
+        "tag": "protected_time",
+        "original_tag": "protected_time",
+        "engine_status": "PLANNED",
+        "rule_text": "3 wks & 4.5 wknd - new protected time",
+        "parsed": {
+          "weeks": 3.0,
+          "weekends": 4.5
+        },
+        "parse_status": "partial"
+      }
+    ],
+    "ALAM, SAMAR": [],
+    "ALKEN, JEFFREY": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Prefers 5 PM shifts",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "AL-SAFADI, MAHER": [],
+    "AMANAT, AMMAAR": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "ANWAR, FAWAZ": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "3 ELMER weeks/year",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "AUSAF, SARA": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer, only Vineland, likes 7 on/7 offschedule",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "BADR, SAMER": [],
+    "BARRINGTON, DORRIE-SUSAN": [],
+    "BAYRUNS, STEPHANIE": [],
+    "BAZERGUI, CHRISTOPHER": [],
+    "BENDER, BRADLEY": [
+      {
+        "tag": "no_um",
+        "original_tag": "no_um",
+        "engine_status": "PLANNED",
+        "rule_text": "No UM",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "BORRA, GAYATRI": [
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "14 weeks as PA",
+        "parsed": {
+          "pa_weeks": 14
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "BREIBART, NATALLIA": [
+      {
+        "tag": "location_restriction",
+        "original_tag": "location_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "3 weeks of Elmer only",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "BUTT, KAMBIZ": [],
+    "CADESTIN, MARJORIE": [
+      {
+        "tag": "service_restriction",
+        "original_tag": "service_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching). Cape in august",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "CALDER, NICHOLAS": [],
+    "CAPALBO, JOSEPH": [],
+    "CERCEO, ELIZABETH": [],
+    "CHARLES, LAURIE": [],
+    "CHEN, WEI": [],
+    "CHELLAPURAM, NIKITHA": [
+      {
+        "tag": "swing_shift",
+        "original_tag": "swing_shift",
+        "engine_status": "ACTIVE",
+        "rule_text": "Days & Swing",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "CHIMENTO, DANIELLE": [],
+    "CONTINO, GABRIELA": [
+      {
+        "tag": "split_department",
+        "original_tag": "split_department",
+        "engine_status": "PLANNED",
+        "rule_text": "Peds 0.35: 10 weeks and 4 weekends per year,",
+        "parsed": {
+          "weeks": 10,
+          "weekends": 4,
+          "department": "Peds"
+        },
+        "parse_status": "partial"
+      },
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2035-09-23; LeaveEndDate: 2025-12-15; Reason-Relationship: Care for newborn/Newborn; : 11 weeks",
+        "parsed": {
+          "leavebegdate": "2035-09-23",
+          "leaveenddate": "2025-12-15"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "CONTRACTOR, ANAMTA": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "COYLE, GLENYS": [],
+    "CRUZ, MYRIAM": [],
+    "CUNNINGS, EMILY": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "Schedule nights, then Mannington then MH/Cooper",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "DADVAND, LAILA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "70% Vineland, 30 % Elmer (4 weeks total for Elmer)",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "DAROSHEFSKI, NICHOLAS": [
+      {
+        "tag": "no_vineland",
+        "original_tag": "no_vineland",
+        "engine_status": "ACTIVE",
+        "rule_text": "60% only at Elmer, no vineland, Schedule night first, then Elmer and then MH",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "DEB, ASHOKE": [],
+    "DEEN, IMAD UD": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "35% Elmer - 3 weeks per block",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "DELEON, MIGUEL": [],
+    "DHILLION, JASJIT": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "All virtua locations",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "D'MELLO, KEVIN": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "1 week MH per block",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "DRAGOMIR, DAN": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "DUNN JR, ERNEST CHARLES": [
+      {
+        "tag": "swing_shift",
+        "original_tag": "swing_shift",
+        "engine_status": "ACTIVE",
+        "rule_text": "153 DAYS/25 SWING/ 26 NIGHT",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "EDELSTEIN, JONATHAN": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "FARMER, ALKA": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "do_not_schedule",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "FARQUHAR, RHEA": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "Need to schedule nights",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "FAZAL, ZOHEB": [],
+    "FERNANDEZ, CHRISTOPHER": [],
+    "FILS, SOFIA": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "Can not work M,T,W nights",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "FLEURY, OLENA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "More Elmer than Vineland",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "GABRIEL, ANDRE": [],
+    "GABRIEL, NATHANIEL": [],
+    "GAMBALE, JOSEPH": [],
+    "GANDHI, SNEHAL": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "do_not_schedule",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "GEORGE, BIBBIN": [],
+    "GEORGE, PHILIP": [],
+    "GAHMAN, KEVIN": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "All virtua locations",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "GHUMAN, ARMANDEEP": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Mount Holly mainly, but can go anywhere in Virtua",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "GLEANER, IAN": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "13 weeks and 14 weekends",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "GLICKMAN, CYNTHIA": [],
+    "GORDAN, SABRINA": [],
+    "GREENBERG, ALAN": [],
+    "GROGG, JOSEPH": [],
+    "GROSS, MICHAEL": [
+      {
+        "tag": "location_restriction",
+        "original_tag": "location_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "Only doing swing shift at Cape. Days will be at Cooper. No MH.",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "GUMMADI, VEDAM": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "Do not schedule her even though her leave is ending on 3.27.26 as she may extend it",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "HAIDER, QUANDEEL": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "HAILEMARIAM, FITSUM": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "4 weeks/year for Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "HANES, DOUGLAS": [],
+    "HAROLDSON, KATHRYN": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "1 wk per block at Vineland",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "HASSINGER, GABRIELLE": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Need to pull contract",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "HAYDAR, ALI": [],
+    "HENRIKSEN, GABRIELLE": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "Vineland only. No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      },
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-04-29; LeaveEndDate: 2025-06-15; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-06-16; : 7 weeks",
+        "parsed": {
+          "leavebegdate": "2025-04-29",
+          "leaveenddate": "2025-06-15",
+          "return_to_work": "2025-06-16"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "HILDITCH, GREGORY": [],
+    "HOPE, LISA": [
+      {
+        "tag": "swing_shift",
+        "original_tag": "swing_shift",
+        "engine_status": "ACTIVE",
+        "rule_text": "72 Days, 60 swing\nPlease assign her 7 days(1 full week) and 4 swing shifts per month",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "JABEEN, EFFAT": [
+      {
+        "tag": "scheduling_priority",
+        "original_tag": "scheduling_priority",
+        "engine_status": "PLANNED",
+        "rule_text": "Nights and Mannington schedule first, then Vineland & Cooper",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "JAYAMAHA, DON JUDE": [],
+    "KAGAN, HEATHER": [],
+    "KAMALU, OKEBUGWU": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "No nights",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "KATH, HEATON": [],
+    "KAZMI, IZAZ": [],
+    "KEEFE, JOSEPH": [
+      {
+        "tag": "swing_shift",
+        "original_tag": "swing_shift",
+        "engine_status": "ACTIVE",
+        "rule_text": "3 SWING/MONTH - only if we needed. Otherwise schedule as 26/26",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "KHANDKER, MAYA": [
+      {
+        "tag": "split_department",
+        "original_tag": "split_department",
+        "engine_status": "PLANNED",
+        "rule_text": "Peds 6 wks, no weekend, IM 17/17/36 -",
+        "parsed": {
+          "department": "Peds"
+        },
+        "parse_status": "partial"
+      }
+    ],
+    "LEE, ANDREW": [
+      {
+        "tag": "scheduling_priority",
+        "original_tag": "scheduling_priority",
+        "engine_status": "PLANNED",
+        "rule_text": "Cape schedule first, then Cooper",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "LEE, GRACE": [
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-03-31; LeaveEndDate: 2025-12-30; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-12-31; : N/A",
+        "parsed": {
+          "leavebegdate": "2025-03-31",
+          "leaveenddate": "2025-12-30",
+          "return_to_work": "2025-12-31"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "LEE, SUSAN": [
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-11-19; LeaveEndDate: 2025-12-14; Reason-Relationship: Serious Health Condition/Parent (All Covered); Return to work: 2026-02-11; : 2.5 week",
+        "parsed": {
+          "leavebegdate": "2025-11-19",
+          "leaveenddate": "2025-12-14",
+          "return_to_work": "2026-02-11"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "Li, Ka Yi": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "She wasn't listed on CMSRU list of times, so i have reached out to dean to verify",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "Li, Ryan": [],
+    "LIANG, XIAOHUI": [
+      {
+        "tag": "scheduling_priority",
+        "original_tag": "scheduling_priority",
+        "engine_status": "PLANNED",
+        "rule_text": "Schedule Mannington first, Cape next and then Cooper",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "LIU, RYAN": [],
+    "LOGUE, RAYMOND": [],
+    "LUTHRA, PRATEEK": [],
+    "MAIORINO, VINCENT": [
+      {
+        "tag": "scheduling_priority",
+        "original_tag": "scheduling_priority",
+        "engine_status": "PLANNED",
+        "rule_text": "Schedule nights and Cape first",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "MALONE, MICHAEL": [],
+    "MANDALA, ASHOK": [],
+    "MANGOLD, MELISSA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "1 wk per block at Vineland",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "MANNO, MEGAN": [],
+    "MANU, JOANITTA": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "10 nights per month",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "MAROTTA, KRISTEN": [],
+    "MARVANIA, CHAND": [
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-10-08; LeaveEndDate: 2025-12-10; Reason-Relationship: Pregnancy/Self; Return to work: 2025-12-17; : 9 weeks",
+        "parsed": {
+          "leavebegdate": "2025-10-08",
+          "leaveenddate": "2025-12-10",
+          "return_to_work": "2025-12-17"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "MATCHETT, SEAN": [],
+    "MATTA, PRANEEJA": [],
+    "MCCULLUM, CATHERINE": [],
+    "MCMACKIN, PAUL": [],
+    "MCMILLAN, TYLER": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "1 wk per block at Vineland",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "MEHTA, SAURABH": [],
+    "MOHIUDDIN, SAFWAN": [],
+    "MOK, JASPER": [],
+    "MOOKERJEE, ANURADHA": [],
+    "MU, JEFFREY": [],
+    "MUNGEKAR, MANGESH": [],
+    "MUSTAFA, YASMEEN": [],
+    "NASH, RACHEL": [],
+    "NAWSHIN, SADIA": [],
+    "NEWELL, GLENN": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "No more fridays",
+        "parsed": null,
+        "parse_status": "presence_only"
+      },
+      {
+        "tag": "days_per_week",
+        "original_tag": "days_per_week: 4",
+        "engine_status": "ACTIVE",
+        "rule_text": "never works on Fridays",
+        "parsed": {
+          "days_per_week": 4
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "NDIFOR, STEPHANIE": [],
+    "NGUY, STEVEN": [],
+    "OBERDORF, W. ERIC": [],
+    "OLAYEMI, CHARLTON": [],
+    "ORATE-DIMAPILIS, CHRISTINA": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "ORTIZ, ADRIEM": [
+      {
+        "tag": "service_restriction",
+        "original_tag": "service_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching)",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "PALLI, VINAY": [],
+    "PATEL, KAJAL": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "3 wk and 3 wknd FMLA",
+        "parsed": null,
+        "parse_status": "presence_only"
+      },
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-05-07; LeaveEndDate: 2025-10-25; Reason-Relationship: Pregnancy/Self; Return to work: 2025-07-24; : 12 weeks",
+        "parsed": {
+          "leavebegdate": "2025-05-07",
+          "leaveenddate": "2025-10-25",
+          "return_to_work": "2025-07-24"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "PATEL, PRARTHI": [],
+    "PATEL, RITESH": [],
+    "PATEL, VAISHALI": [],
+    "PATEL, PRITEN": [],
+    "PATEL, PARITA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "2 weeks per block at MH",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "PATEL, REENA": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "PATEL, SAKSHAR": [
+      {
+        "tag": "swing_shift",
+        "original_tag": "swing_shift",
+        "engine_status": "ACTIVE",
+        "rule_text": "Has 56 swing (no nights)",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "PATTANAIK, SAMBIT": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "3 nights at MH, 1 at Elmer, 1 at Vineland 1-2 nights at Cooper per month)",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "PATTERSON, KRISTEN": [],
+    "PEET, ALISA": [],
+    "PEREZ, CHRISTOPHER": [],
+    "PODDAR, SAMEER": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Cape time 13 weeks and 13 weeeknds",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "POMARY, VICTOR": [],
+    "PRAMOOD, REENA": [],
+    "RACHOIN, JEAN-SEBASTIEN": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "do_not_schedule",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "RAMDASS, VEDE": [
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-08-06; LeaveEndDate: 2025-09-16; Reason-Relationship: Serious Health Condition/Self; Return to work: 2025-09-17; : 6 weeks",
+        "parsed": {
+          "leavebegdate": "2025-08-06",
+          "leaveenddate": "2025-09-16",
+          "return_to_work": "2025-09-17"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "RAMEEZA, AAKHILA": [],
+    "RANGWALLA, INCIYA": [
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "12 weeks of PA",
+        "parsed": {
+          "pa_weeks": 12
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "RASHEED, SAMMAR": [],
+    "REDDY, SRIHARSHAN": [],
+    "RUGGERO, JAMES": [],
+    "RUPP, JESSICA": [
+      {
+        "tag": "location_restriction",
+        "original_tag": "location_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "Only Virtua north",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "SAPASETTY, ADITYA": [
+      {
+        "tag": "scheduling_priority",
+        "original_tag": "scheduling_priority",
+        "engine_status": "PLANNED",
+        "rule_text": "Schedule Mannington First",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "SCHOLL, AMY": [],
+    "SHAH, HELY": [],
+    "SHAH, PRATIK": [],
+    "SHAIKH, SAMANA": [],
+    "SHARMA, MEENA": [
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "11 weeks clinical and 15 weeks PA",
+        "parsed": {
+          "pa_weeks": 11
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "SHIHONG, IRIS": [],
+    "SHKLAR, DAVID": [
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "17 weeks PA, his weekend days are suppose to be nights as well.",
+        "parsed": {
+          "pa_weeks": 17
+        },
+        "parse_status": "ok"
+      },
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "17 weeks PA",
+        "parsed": {
+          "pa_weeks": 17
+        },
+        "parse_status": "ok"
+      },
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "do_not_schedule",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "SHOUKRY, JESSICA": [],
+    "SHOR, SAMANTHA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Block 1 30/14\nBlock 2 24/23",
+        "parsed": null,
+        "parse_status": "presence_only"
+      },
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-06-30; LeaveEndDate: 2025-07-06; Reason-Relationship: Personal Leave; : 1 week",
+        "parsed": {
+          "leavebegdate": "2025-06-30",
+          "leaveenddate": "2025-07-06"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "SMITH, BRUCE": [],
+    "SPRINGER, MATTHEW": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Cooper - 6/6, Vineland 6/6 MH - 11/9.5",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "STONE, PAUL": [],
+    "SYKES, JOSEPH": [],
+    "TANIOUS, ASHRAF": [],
+    "TERRIGNO, NICOLE": [],
+    "THAKUR, NAKITA": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "THOMAS, MARK": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Check about his Clinical weeks at Vineland due to CMSRU",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "TORRES, JUSTIN": [
+      {
+        "tag": "location_restriction",
+        "original_tag": "location_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "Keep him at Cooper only untile we get his credentiailng for cooper and virtua",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "TRONGONE, JENNIFER": [
+      {
+        "tag": "no_elmer",
+        "original_tag": "no_elmer",
+        "engine_status": "ACTIVE",
+        "rule_text": "No Elmer",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "TROYANOVICH, ESTEBAN": [],
+    "TUDOR, VLAD": [],
+    "UFONDU, EBELE": [],
+    "VALVANO, AMANDA": [
+      {
+        "tag": "location_restriction",
+        "original_tag": "location_restriction",
+        "engine_status": "PLANNED",
+        "rule_text": "MH shifts - 10 hr, Vineland only Fri,Sat",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "VARNER, PHILIP": [
+      {
+        "tag": "swing_shift",
+        "original_tag": "swing_shift",
+        "engine_status": "ACTIVE",
+        "rule_text": "73 DAYS, 73 SWING, 17 NIGHTS",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "VELAYADIKOT, DEEPA": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "do_not_schedule",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "WALLACE, NIURKA": [
+      {
+        "tag": "night_constraint",
+        "original_tag": "night_constraint",
+        "engine_status": "PLANNED",
+        "rule_text": "Assign 4 nights at cape and 2 nights at MH",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "WANG, ZIQIAN": [],
+    "WHITE, EMMA": [
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-11-03; LeaveEndDate: 2026-01-07; Reason-Relationship: Pregnancy/Self; : 9 weeks",
+        "parsed": {
+          "leavebegdate": "2025-11-03",
+          "leaveenddate": "2026-01-07"
+        },
+        "parse_status": "ok"
+      },
+      {
+        "tag": "pct_override",
+        "original_tag": "pct_override",
+        "engine_status": "ACTIVE",
+        "rule_text": "cooper: 0%, mh: 100%",
+        "parsed": {
+          "pct_cooper": 0.0,
+          "pct_inspira_mhw": 1.0
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "WILEN, DANIEL": [
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "2 Week Cape PA and 2 week Vineland PA per block",
+        "parsed": {
+          "pa_weeks": 2
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "WOLFE, RICHARD": [],
+    "YAGNIK, HENA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "C- 25% (6/6), V -45% (12/12),E 30% (8/8)",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "YOUNG, NICHOLAS": [],
+    "YU, AARON": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Any vitua location. Keep MH less than Voorhees. Marlton",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "VIJAYKUMAR, ASHWIN": [],
+    "ZHENG, LIN": [
+      {
+        "tag": "pa_rotation",
+        "original_tag": "pa_rotation",
+        "engine_status": "ACTIVE",
+        "rule_text": "1 week per block as PA at Vineland",
+        "parsed": {
+          "pa_weeks": 1
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "ZHENG, ANGELA": [
+      {
+        "tag": "do_not_schedule",
+        "original_tag": "do_not_schedule",
+        "engine_status": "ACTIVE",
+        "rule_text": "Don't schedule after 9/20. 9/26 Due date. 12 weeks of maternity leave. 20/20 Total. Block 1 FMLA. w/ Core faculty 18/18",
+        "parsed": null,
+        "parse_status": "presence_only"
+      },
+      {
+        "tag": "fmla",
+        "original_tag": "fmla",
+        "engine_status": "INFO",
+        "rule_text": "LeaveBegDate: 2025-11-10; LeaveEndDate: 2026-01-30; Reason-Relationship: Care for newborn/Newborn; : 12 weeks",
+        "parsed": {
+          "leavebegdate": "2025-11-10",
+          "leaveenddate": "2026-01-30"
+        },
+        "parse_status": "ok"
+      }
+    ],
+    "ZORKO, JULIA": [
+      {
+        "tag": "note",
+        "original_tag": "note",
+        "engine_status": "INFO",
+        "rule_text": "Wants 2 weeks off April 27 until May 10\nNeed to block off June 22-28",
+        "parsed": null,
+        "parse_status": "presence_only"
+      }
+    ],
+    "ZHANG, YANHONG": []
+  },
+  "issues": [
+    {
+      "type": "unresolved_name",
+      "provider_name": "Elsabeth Asare",
+      "tag": "location_restriction",
+      "detail": "'Elsabeth Asare' does not match any provider in the Providers sheet"
+    },
+    {
+      "type": "unresolved_name",
+      "provider_name": "Vedam, Gmmadi",
+      "tag": "fmla",
+      "detail": "'Vedam, Gmmadi' does not match any provider in the Providers sheet"
+    },
+    {
+      "type": "duplicate_tag",
+      "provider_name": "SHKLAR, DAVID",
+      "tag": "pa_rotation",
+      "detail": "Duplicate: 'pa_rotation' appears 2 times"
+    },
+    {
+      "type": "tag_on_excluded",
+      "provider_name": "SHKLAR, DAVID",
+      "tag": "pa_rotation",
+      "detail": "Dead tag: provider is do_not_schedule"
+    },
+    {
+      "type": "tag_on_excluded",
+      "provider_name": "SHKLAR, DAVID",
+      "tag": "pa_rotation",
+      "detail": "Dead tag: provider is do_not_schedule"
+    },
+    {
+      "type": "tag_on_excluded",
+      "provider_name": "PATEL, KAJAL",
+      "tag": "fmla",
+      "detail": "Dead tag: provider is do_not_schedule"
+    },
+    {
+      "type": "tag_on_excluded",
+      "provider_name": "ZHENG, ANGELA",
+      "tag": "fmla",
+      "detail": "Dead tag: provider is do_not_schedule"
+    }
+  ]
+}
