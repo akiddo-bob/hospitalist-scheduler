@@ -171,10 +171,10 @@ a.prov-link:hover { text-decoration: underline; }
 <div id="report-content" class="">
 <div class="container">
 
-<div class="nav"><span class="nav-label">Variations:</span><a href="v3_index.html">Overview</a><a href="report_seed42.html">Seed 42</a><a href="report_seed7.html">Seed 7</a><a href="v3_inputs.html" class="active">Inputs</a></div>
+<div class="nav"><span class="nav-label">Variations:</span><a href="v3_index.html">Overview</a><a href="report_seed42.html">Seed 42</a><a href="v3_inputs.html" class="active">Inputs</a></div>
 
 <h1>Block 3 Inputs Reference — V3 Engine</h1>
-<p class="generated">Generated: 2026-02-21 22:43</p>
+<p class="generated">Generated: 2026-02-22 01:32</p>
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab(0)">Providers</div>
@@ -287,7 +287,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>1</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
-<td style="font-size:11px">note: Prefers 5 PM shifts</td>
+<td style="font-size:11px"></td>
 </tr>
 <tr>
 <td><strong>AMANAT, AMMAAR</strong></td>
@@ -315,7 +315,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: 3 ELMER weeks/year</td>
+<td style="font-size:11px">site_cap: inspira_veb: 3 weeks/year</td>
 </tr>
 <tr>
 <td><strong>AUSAF, SARA</strong></td>
@@ -427,7 +427,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">location_restriction: 3 weeks of Elmer only</td>
+<td style="font-size:11px">site_cap: inspira_veb: 3 weeks/block</td>
 </tr>
 <tr>
 <td><strong>BUTT, KAMBIZ</strong></td>
@@ -623,7 +623,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
-<td style="font-size:11px">night_constraint: Schedule nights, then Mannington then MH/Cooper</td>
+<td style="font-size:11px">scheduling_priority: order: nights, mannington, mh, cooper</td>
 </tr>
 <tr>
 <td><strong>D&#x27;MELLO, KEVIN</strong></td>
@@ -637,7 +637,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
-<td style="font-size:11px">note: 1 week MH per block</td>
+<td style="font-size:11px">site_cap: inspira_mhw: 1 week/block</td>
 </tr>
 <tr>
 <td><strong>DADVAND, LAILA</strong></td>
@@ -721,7 +721,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>1</td><td>0</td>
 <td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">note: All virtua locations</td>
+<td style="font-size:11px">location_restriction: only: virtua</td>
 </tr>
 <tr>
 <td><strong>DRAGOMIR, DAN</strong></td>
@@ -791,7 +791,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">night_constraint: Need to schedule nights</td>
+<td style="font-size:11px">scheduling_priority: order: nights</td>
 </tr>
 <tr style="background:#fff3e0">
 <td><strong>FAZAL, ZOHEB</strong></td>
@@ -833,7 +833,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">night_constraint: Can not work M,T,W nights</td>
+<td style="font-size:11px">night_constraint: exclude_days: M,T,W</td>
 </tr>
 <tr style="background:#e8eaf6">
 <td><strong>FLEURY, OLENA</strong></td>
@@ -889,7 +889,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>1</td><td>0</td>
 <td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">note: All virtua locations</td>
+<td style="font-size:11px">location_restriction: only: virtua</td>
 </tr>
 <tr>
 <td><strong>GAMBALE, JOSEPH</strong></td>
@@ -1057,7 +1057,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>1</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">do_not_schedule: Do not schedule her even though her leave is ending on 3.27.26 as she may extend it</td>
+<td style="font-size:11px">do_not_schedule: Do not schedule her even though her leave is ending on 3.27.26 as she may extend it<br>fmla: LeaveBegDate: 2025-11-24; LeaveEndDate: 2026-03-27; Reason-Relationship: Serious Health Condition/Self; : Not clear return date</td>
 </tr>
 <tr style="background:#fff3e0">
 <td><strong>HAIDER, QUANDEEL</strong></td>
@@ -1085,7 +1085,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: 4 weeks/year for Elmer</td>
+<td style="font-size:11px">site_cap: inspira_veb: 4 weeks/year</td>
 </tr>
 <tr>
 <td><strong>HANES, DOUGLAS</strong></td>
@@ -1113,7 +1113,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: 1 wk per block at Vineland</td>
+<td style="font-size:11px">site_cap: inspira_veb: 1 week/block</td>
 </tr>
 <tr>
 <td><strong>HASSINGER, GABRIELLE</strong></td>
@@ -1127,7 +1127,7 @@ a.prov-link:hover { text-decoration: underline; }
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
-<td style="font-size:11px">note: Need to pull contract</td>
+<td style="font-size:11px"></td>
 </tr>
 <tr>
 <td><strong>HAYDAR, ALI</strong></td>
@@ -1198,7 +1198,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
-<td style="font-size:11px">scheduling_priority: Nights and Mannington schedule first, then Vineland &amp; Cooper</td>
+<td style="font-size:11px">scheduling_priority: order: nights, mannington, vineland, cooper</td>
 </tr>
 <tr>
 <td><strong>JAYAMAHA, DON JUDE</strong></td>
@@ -1240,7 +1240,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>1</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
-<td style="font-size:11px">night_constraint: No nights</td>
+<td style="font-size:11px">night_constraint: no_nights</td>
 </tr>
 <tr>
 <td><strong>KATH, HEATON</strong></td>
@@ -1310,7 +1310,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">scheduling_priority: Cape schedule first, then Cooper</td>
+<td style="font-size:11px">scheduling_priority: order: cape, cooper</td>
 </tr>
 <tr>
 <td><strong>LEE, GRACE</strong></td>
@@ -1352,7 +1352,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#e65100">MAN</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">scheduling_priority: Schedule Mannington first, Cape next and then Cooper</td>
+<td style="font-size:11px">scheduling_priority: order: mannington, cape, cooper</td>
 </tr>
 <tr style="background:#e8eaf6">
 <td><strong>LIU, RYAN</strong></td>
@@ -1408,7 +1408,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
-<td style="font-size:11px">note: She wasn&#x27;t listed on CMSRU list of times, so i have reached out to dean to verify</td>
+<td style="font-size:11px"></td>
 </tr>
 <tr style="background:#fff3e0">
 <td><strong>Li, Ryan</strong></td>
@@ -1436,7 +1436,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">scheduling_priority: Schedule nights and Cape first</td>
+<td style="font-size:11px">scheduling_priority: order: nights, cape</td>
 </tr>
 <tr>
 <td><strong>MALONE, MICHAEL</strong></td>
@@ -1478,7 +1478,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: 1 wk per block at Vineland</td>
+<td style="font-size:11px">site_cap: inspira_veb: 1 week/block</td>
 </tr>
 <tr>
 <td><strong>MANNO, MEGAN</strong></td>
@@ -1506,7 +1506,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
-<td style="font-size:11px">night_constraint: 10 nights per month</td>
+<td style="font-size:11px">night_constraint: total: 10/month</td>
 </tr>
 <tr>
 <td><strong>MAROTTA, KRISTEN</strong></td>
@@ -1604,7 +1604,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: 1 wk per block at Vineland</td>
+<td style="font-size:11px">site_cap: inspira_veb: 1 week/block</td>
 </tr>
 <tr style="background:#e8eaf6">
 <td><strong>MEHTA, SAURABH</strong></td>
@@ -1758,7 +1758,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span></td>
-<td style="font-size:11px">note: No more fridays<br>days_per_week: 4: never works on Fridays</td>
+<td style="font-size:11px">days_per_week: 4</td>
 </tr>
 <tr>
 <td><strong>NGUY, STEVEN</strong></td>
@@ -1870,7 +1870,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">note: 2 weeks per block at MH</td>
+<td style="font-size:11px">site_cap: inspira_mhw: 2 weeks/block</td>
 </tr>
 <tr>
 <td><strong>PATEL, PRARTHI</strong></td>
@@ -1968,7 +1968,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span></td>
-<td style="font-size:11px">night_constraint: 3 nights at MH, 1 at Elmer, 1 at Vineland 1-2 nights at Cooper per month)</td>
+<td style="font-size:11px">night_constraint: inspira_mhw: 3/month, inspira_veb: 1/month, inspira_veb: 1/month, cooper: 2/month</td>
 </tr>
 <tr>
 <td><strong>PATTERSON, KRISTEN</strong></td>
@@ -2024,7 +2024,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">note: Cape time 13 weeks and 13 weeeknds</td>
+<td style="font-size:11px">site_cap: cape: 13 weeks, 13 weekends/year</td>
 </tr>
 <tr>
 <td><strong>POMARY, VICTOR</strong></td>
@@ -2163,8 +2163,8 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>1</td><td>0</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
-<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">location_restriction: Only Virtua north</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">location_restriction: only: virtua</td>
 </tr>
 <tr>
 <td><strong>SAPASETTY, ADITYA</strong></td>
@@ -2178,7 +2178,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span> <span class="site-badge" style="background:#e65100">MAN</span></td>
-<td style="font-size:11px">scheduling_priority: Schedule Mannington First</td>
+<td style="font-size:11px">scheduling_priority: order: mannington</td>
 </tr>
 <tr>
 <td><strong>SCHOLL, AMY</strong></td>
@@ -2276,7 +2276,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>0</td><td>0</td>
 <td>1</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">pa_rotation: 17 weeks PA, his weekend days are suppose to be nights as well.<br>pa_rotation: 17 weeks PA<br>do_not_schedule: do_not_schedule</td>
+<td style="font-size:11px">pa_rotation: 17 weeks PA, his weekend days are suppose to be nights as well.<br>do_not_schedule: do_not_schedule</td>
 </tr>
 <tr>
 <td><strong>SHOR, SAMANTHA</strong></td>
@@ -2290,8 +2290,7 @@ Please assign her 7 days(1 full week) and 4 swing shifts per month</td>
 <td>1</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">note: Block 1 30/14
-Block 2 24/23</td>
+<td style="font-size:11px"></td>
 </tr>
 <tr>
 <td><strong>SHOUKRY, JESSICA</strong></td>
@@ -2417,7 +2416,7 @@ Block 2 24/23</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: Check about his Clinical weeks at Vineland due to CMSRU</td>
+<td style="font-size:11px"></td>
 </tr>
 <tr style="background:#e8eaf6">
 <td><strong>TORRES, JUSTIN</strong></td>
@@ -2430,8 +2429,8 @@ Block 2 24/23</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
-<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">location_restriction: Keep him at Cooper only untile we get his credentiailng for cooper and virtua</td>
+<td><span class="site-badge" style="background:#1565c0">CUH</span></td>
+<td style="font-size:11px">location_restriction: only: cooper</td>
 </tr>
 <tr>
 <td><strong>TRONGONE, JENNIFER</strong></td>
@@ -2557,7 +2556,7 @@ Block 2 24/23</td>
 <td>0</td><td>0</td>
 <td>0</td><td>1</td>
 <td><span class="site-badge" style="background:#2e7d32">MH</span> <span class="site-badge" style="background:#c62828">CAPE</span></td>
-<td style="font-size:11px">night_constraint: Assign 4 nights at cape and 2 nights at MH</td>
+<td style="font-size:11px">night_constraint: cape: 4/month, inspira_mhw: 2/month</td>
 </tr>
 <tr>
 <td><strong>WANG, ZIQIAN</strong></td>
@@ -2654,8 +2653,8 @@ Block 2 24/23</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
-<td><span class="site-badge" style="background:#1565c0">CUH</span> <span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
-<td style="font-size:11px">note: Any vitua location. Keep MH less than Voorhees. Marlton</td>
+<td><span class="site-badge" style="background:#00838f">V-VH</span> <span class="site-badge" style="background:#00695c">V-MAR</span> <span class="site-badge" style="background:#0277bd">V-WB</span> <span class="site-badge" style="background:#00796b">V-MH</span></td>
+<td style="font-size:11px">location_restriction: only: virtua</td>
 </tr>
 <tr>
 <td><strong>ZHANG, YANHONG</strong></td>
@@ -2711,8 +2710,7 @@ Block 2 24/23</td>
 <td>0</td><td>0</td>
 <td>0</td><td>0</td>
 <td><span class="site-badge" style="background:#6a1b9a">VIN</span> <span class="site-badge" style="background:#4a148c">ELM</span></td>
-<td style="font-size:11px">note: Wants 2 weeks off April 27 until May 10
-Need to block off June 22-28</td>
+<td style="font-size:11px">availability_block: 2026-04-27 to 2026-05-10, 2026-06-22 to 2026-06-28</td>
 </tr>
 </tbody></table>
 </div>
@@ -2746,11 +2744,11 @@ Need to block off June 22-28</td>
 <p style="color:#666;margin-bottom:12px">Eligible providers per site (based on allocation percentages and tag restrictions).</p>
 <table><thead><tr><th>Site</th><th>Eligible Providers</th><th>Ratio (Pool / Demand)</th></tr></thead><tbody>
 <tr><td><span class="site-badge" style="background:#c62828">Cape</span></td>
-<td>31</td>
-<td><span class="badge badge-ok">4.4x</span></td></tr>
+<td>30</td>
+<td><span class="badge badge-ok">4.3x</span></td></tr>
 <tr><td><span class="site-badge" style="background:#1565c0">Cooper</span></td>
-<td>117</td>
-<td><span class="badge badge-ok">4.5x</span></td></tr>
+<td>115</td>
+<td><span class="badge badge-ok">4.4x</span></td></tr>
 <tr><td><span class="site-badge" style="background:#4a148c">Elmer</span></td>
 <td>51</td>
 <td><span class="badge badge-ok">51.0x</span></td></tr>
@@ -2764,30 +2762,34 @@ Need to block off June 22-28</td>
 <td>62</td>
 <td><span class="badge badge-ok">5.6x</span></td></tr>
 <tr><td><span class="site-badge" style="background:#00695c">Virtua Marlton</span></td>
-<td>37</td>
-<td><span class="badge badge-ok">37.0x</span></td></tr>
+<td>36</td>
+<td><span class="badge badge-ok">36.0x</span></td></tr>
 <tr><td><span class="site-badge" style="background:#00796b">Virtua Mt Holly</span></td>
-<td>37</td>
-<td><span class="badge badge-ok">18.5x</span></td></tr>
+<td>36</td>
+<td><span class="badge badge-ok">18.0x</span></td></tr>
 <tr><td><span class="site-badge" style="background:#00838f">Virtua Voorhees</span></td>
-<td>37</td>
-<td><span class="badge badge-ok">18.5x</span></td></tr>
+<td>36</td>
+<td><span class="badge badge-ok">18.0x</span></td></tr>
 <tr><td><span class="site-badge" style="background:#0277bd">Virtua Willingboro</span></td>
-<td>37</td>
-<td><span class="badge badge-ok">37.0x</span></td></tr>
+<td>36</td>
+<td><span class="badge badge-ok">36.0x</span></td></tr>
 </tbody></table>
 </div>
 <div class="tab-content">
 <h2>Provider Tags</h2>
 <p style="color:#666;margin-bottom:12px">Tags modify scheduling behavior for individual providers.</p>
 <div class="stats-grid">
-<div class="stat-card"><div class="stat-value">16</div><div class="stat-label">Unique Tags</div></div>
-<div class="stat-card"><div class="stat-value">96</div><div class="stat-label">Total Assignments</div></div>
-<div class="stat-card"><div class="stat-value">93</div><div class="stat-label">Providers w/ Tags</div></div>
+<div class="stat-card"><div class="stat-value">18</div><div class="stat-label">Unique Tags</div></div>
+<div class="stat-card"><div class="stat-value">89</div><div class="stat-label">Total Assignments</div></div>
+<div class="stat-card"><div class="stat-value">87</div><div class="stat-label">Providers w/ Tags</div></div>
 </div>
-<h3>days_per_week: 4 <span class="badge badge-warn">1</span></h3>
+<h3>availability_block <span class="badge badge-warn">1</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
-<tr><td>NEWELL, GLENN</td><td>never works on Fridays</td></tr>
+<tr><td>ZORKO, JULIA</td><td>2026-04-27 to 2026-05-10, 2026-06-22 to 2026-06-28</td></tr>
+</tbody></table>
+<h3>days_per_week <span class="badge badge-warn">1</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>NEWELL, GLENN</td><td>4</td></tr>
 </tbody></table>
 <h3>do_not_schedule <span class="badge badge-warn">8</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
@@ -2802,7 +2804,8 @@ Need to block off June 22-28</td>
 </tbody></table>
 <h3>fmla <span class="badge badge-warn">11</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
-<tr><td>Contino, Gabriela</td><td>LeaveBegDate: 2035-09-23; LeaveEndDate: 2025-12-15; Reason-Relationship: Care for newborn/Newborn; : 11 weeks</td></tr>
+<tr><td>Contino, Gabriela</td><td>LeaveBegDate: 2025-09-23; LeaveEndDate: 2025-12-15; Reason-Relationship: Care for newborn/Newborn; : 11 weeks</td></tr>
+<tr><td>GUMMADI, VEDAM</td><td>LeaveBegDate: 2025-11-24; LeaveEndDate: 2026-03-27; Reason-Relationship: Serious Health Condition/Self; : Not clear return date</td></tr>
 <tr><td>Henriksen, Gabrielle</td><td>LeaveBegDate: 2025-04-29; LeaveEndDate: 2025-06-15; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-06-16; : 7 weeks</td></tr>
 <tr><td>Lee, Grace</td><td>LeaveBegDate: 2025-03-31; LeaveEndDate: 2025-12-30; Reason-Relationship: ADA Accommodation Leave; Return to work: 2025-12-31; : N/A</td></tr>
 <tr><td>Lee, Se-Eun</td><td>LeaveBegDate: 2025-11-19; LeaveEndDate: 2025-12-14; Reason-Relationship: Serious Health Condition/Parent (All Covered); Return to work: 2026-02-11; : 2.5 week</td></tr>
@@ -2810,28 +2813,27 @@ Need to block off June 22-28</td>
 <tr><td>Patel, Kajal</td><td>LeaveBegDate: 2025-05-07; LeaveEndDate: 2025-10-25; Reason-Relationship: Pregnancy/Self; Return to work: 2025-07-24; : 12 weeks</td></tr>
 <tr><td>Ramdass, Vede</td><td>LeaveBegDate: 2025-08-06; LeaveEndDate: 2025-09-16; Reason-Relationship: Serious Health Condition/Self; Return to work: 2025-09-17; : 6 weeks</td></tr>
 <tr><td>Shor, Samantha</td><td>LeaveBegDate: 2025-06-30; LeaveEndDate: 2025-07-06; Reason-Relationship: Personal Leave; : 1 week</td></tr>
-<tr><td>Vedam, Gmmadi</td><td>LeaveBegDate: 2025-11-24; LeaveEndDate: 2026-03-27; Reason-Relationship: Serious Health Condition/Self; : Not clear return date</td></tr>
 <tr><td>White, Emma</td><td>LeaveBegDate: 2025-11-03; LeaveEndDate: 2026-01-07; Reason-Relationship: Pregnancy/Self; : 9 weeks</td></tr>
 <tr><td>Zheng, Angela</td><td>LeaveBegDate: 2025-11-10; LeaveEndDate: 2026-01-30; Reason-Relationship: Care for newborn/Newborn; : 12 weeks</td></tr>
 </tbody></table>
-<h3>location_restriction <span class="badge badge-warn">6</span></h3>
+<h3>location_restriction <span class="badge badge-warn">8</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
-<tr><td>BREIBART, NATALLIA</td><td>3 weeks of Elmer only</td></tr>
-<tr><td>Elsabeth Asare</td><td>Mannington only</td></tr>
+<tr><td>ASARE, ELSABETH</td><td>only: mannington</td></tr>
+<tr><td>DHILLION, JASJIT</td><td>only: virtua</td></tr>
+<tr><td>GAHMAN, KEVIN</td><td>only: virtua</td></tr>
 <tr><td>GROSS, MICHAEL</td><td>Only doing swing shift at Cape. Days will be at Cooper. No MH.</td></tr>
-<tr><td>RUPP, JESSICA</td><td>Only Virtua north</td></tr>
-<tr><td>TORRES, JUSTIN</td><td>Keep him at Cooper only untile we get his credentiailng for cooper and virtua</td></tr>
+<tr><td>RUPP, JESSICA</td><td>only: virtua</td></tr>
+<tr><td>TORRES, JUSTIN</td><td>only: cooper</td></tr>
 <tr><td>VALVANO, AMANDA</td><td>MH shifts - 10 hr, Vineland only Fri,Sat</td></tr>
+<tr><td>YU, AARON</td><td>only: virtua</td></tr>
 </tbody></table>
-<h3>night_constraint <span class="badge badge-warn">7</span></h3>
+<h3>night_constraint <span class="badge badge-warn">5</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
-<tr><td>CUNNINGS, EMILY</td><td>Schedule nights, then Mannington then MH/Cooper</td></tr>
-<tr><td>FARQUHAR, RHEA</td><td>Need to schedule nights</td></tr>
-<tr><td>FILS, SOFIA</td><td>Can not work M,T,W nights</td></tr>
-<tr><td>KAMALU, OKEBUGWU</td><td>No nights</td></tr>
-<tr><td>MANU, JOANITTA</td><td>10 nights per month</td></tr>
-<tr><td>PATTANAIK, SAMBIT</td><td>3 nights at MH, 1 at Elmer, 1 at Vineland 1-2 nights at Cooper per month)</td></tr>
-<tr><td>WALLACE, NIURKA</td><td>Assign 4 nights at cape and 2 nights at MH</td></tr>
+<tr><td>FILS, SOFIA</td><td>exclude_days: M,T,W</td></tr>
+<tr><td>KAMALU, OKEBUGWU</td><td>no_nights</td></tr>
+<tr><td>MANU, JOANITTA</td><td>total: 10/month</td></tr>
+<tr><td>PATTANAIK, SAMBIT</td><td>inspira_mhw: 3/month, inspira_veb: 1/month, inspira_veb: 1/month, cooper: 2/month</td></tr>
+<tr><td>WALLACE, NIURKA</td><td>cape: 4/month, inspira_mhw: 2/month</td></tr>
 </tbody></table>
 <h3>no_elmer <span class="badge badge-warn">12</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
@@ -2856,43 +2858,22 @@ Need to block off June 22-28</td>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
 <tr><td>DAROSHEFSKI, NICHOLAS</td><td>60% only at Elmer, no vineland, Schedule night first, then Elmer and then MH</td></tr>
 </tbody></table>
-<h3>note <span class="badge badge-warn">25</span></h3>
+<h3>note <span class="badge badge-warn">7</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
-<tr><td>ALKEN, JEFFREY</td><td>Prefers 5 PM shifts</td></tr>
-<tr><td>ANWAR, FAWAZ</td><td>3 ELMER weeks/year</td></tr>
-<tr><td>D&#x27;MELLO, KEVIN</td><td>1 week MH per block</td></tr>
 <tr><td>DADVAND, LAILA</td><td>70% Vineland, 30 % Elmer (4 weeks total for Elmer)</td></tr>
 <tr><td>DEEN, IMAD UD</td><td>35% Elmer - 3 weeks per block</td></tr>
-<tr><td>DHILLION, JASJIT</td><td>All virtua locations</td></tr>
 <tr><td>FLEURY, OLENA</td><td>More Elmer than Vineland</td></tr>
-<tr><td>GAHMAN, KEVIN</td><td>All virtua locations</td></tr>
 <tr><td>GHUMAN, ARMANDEEP</td><td>Mount Holly mainly, but can go anywhere in Virtua</td></tr>
 <tr><td>GLEANER, IAN</td><td>13 weeks and 14 weekends</td></tr>
-<tr><td>HAILEMARIAM, FITSUM</td><td>4 weeks/year for Elmer</td></tr>
-<tr><td>HAROLDSON, KATHRYN</td><td>1 wk per block at Vineland</td></tr>
-<tr><td>HASSINGER, GABRIELLE</td><td>Need to pull contract</td></tr>
-<tr><td>Li, Ka Yi</td><td>She wasn&#x27;t listed on CMSRU list of times, so i have reached out to dean to verify</td></tr>
-<tr><td>MANGOLD, MELISSA</td><td>1 wk per block at Vineland</td></tr>
-<tr><td>MCMILLAN, TYLER</td><td>1 wk per block at Vineland</td></tr>
-<tr><td>NEWELL, GLENN</td><td>No more fridays</td></tr>
-<tr><td>PATEL, PARITA</td><td>2 weeks per block at MH</td></tr>
-<tr><td>PODDAR, SAMEER</td><td>Cape time 13 weeks and 13 weeeknds</td></tr>
-<tr><td>SHOR, SAMANTHA</td><td>Block 1 30/14
-Block 2 24/23</td></tr>
 <tr><td>SPRINGER, MATTHEW</td><td>Cooper - 6/6, Vineland 6/6 MH - 11/9.5</td></tr>
-<tr><td>THOMAS, MARK</td><td>Check about his Clinical weeks at Vineland due to CMSRU</td></tr>
 <tr><td>YAGNIK, HENA</td><td>C- 25% (6/6), V -45% (12/12),E 30% (8/8)</td></tr>
-<tr><td>YU, AARON</td><td>Any vitua location. Keep MH less than Voorhees. Marlton</td></tr>
-<tr><td>ZORKO, JULIA</td><td>Wants 2 weeks off April 27 until May 10
-Need to block off June 22-28</td></tr>
 </tbody></table>
-<h3>pa_rotation <span class="badge badge-warn">7</span></h3>
+<h3>pa_rotation <span class="badge badge-warn">6</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
 <tr><td>BORRA, GAYATRI</td><td>14 weeks as PA</td></tr>
 <tr><td>RANGWALLA, INCIYA</td><td>12 weeks of PA</td></tr>
 <tr><td>SHARMA, MEENA</td><td>11 weeks clinical and 15 weeks PA</td></tr>
 <tr><td>SHKLAR, DAVID</td><td>17 weeks PA, his weekend days are suppose to be nights as well.</td></tr>
-<tr><td>SHKLAR, DAVID</td><td>17 weeks PA</td></tr>
 <tr><td>WILEN, DANIEL</td><td>2 Week Cape PA and 2 week Vineland PA per block</td></tr>
 <tr><td>ZHENG, LIN</td><td>1 week per block as PA at Vineland</td></tr>
 </tbody></table>
@@ -2904,18 +2885,32 @@ Need to block off June 22-28</td></tr>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
 <tr><td>AJEMIAN, ANDREW</td><td>3 wks &amp; 4.5 wknd - new protected time</td></tr>
 </tbody></table>
-<h3>scheduling_priority <span class="badge badge-warn">5</span></h3>
+<h3>scheduling_priority <span class="badge badge-warn">7</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
-<tr><td>JABEEN, EFFAT</td><td>Nights and Mannington schedule first, then Vineland &amp; Cooper</td></tr>
-<tr><td>LEE, ANDREW</td><td>Cape schedule first, then Cooper</td></tr>
-<tr><td>LIANG, XIAOHUI</td><td>Schedule Mannington first, Cape next and then Cooper</td></tr>
-<tr><td>MAIORINO, VINCENT</td><td>Schedule nights and Cape first</td></tr>
-<tr><td>SAPASETTY, ADITYA</td><td>Schedule Mannington First</td></tr>
+<tr><td>CUNNINGS, EMILY</td><td>order: nights, mannington, mh, cooper</td></tr>
+<tr><td>FARQUHAR, RHEA</td><td>order: nights</td></tr>
+<tr><td>JABEEN, EFFAT</td><td>order: nights, mannington, vineland, cooper</td></tr>
+<tr><td>LEE, ANDREW</td><td>order: cape, cooper</td></tr>
+<tr><td>LIANG, XIAOHUI</td><td>order: mannington, cape, cooper</td></tr>
+<tr><td>MAIORINO, VINCENT</td><td>order: nights, cape</td></tr>
+<tr><td>SAPASETTY, ADITYA</td><td>order: mannington</td></tr>
 </tbody></table>
 <h3>service_restriction <span class="badge badge-warn">2</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
 <tr><td>CADESTIN, MARJORIE</td><td>6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching). Cape in august</td></tr>
 <tr><td>ORTIZ, ADRIEM</td><td>6/6 At Cape, 12 weeks at Cooper (80% teaching, 20% nonteaching)</td></tr>
+</tbody></table>
+<h3>site_cap <span class="badge badge-warn">9</span></h3>
+<table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
+<tr><td>ANWAR, FAWAZ</td><td>inspira_veb: 3 weeks/year</td></tr>
+<tr><td>BREIBART, NATALLIA</td><td>inspira_veb: 3 weeks/block</td></tr>
+<tr><td>D&#x27;MELLO, KEVIN</td><td>inspira_mhw: 1 week/block</td></tr>
+<tr><td>HAILEMARIAM, FITSUM</td><td>inspira_veb: 4 weeks/year</td></tr>
+<tr><td>HAROLDSON, KATHRYN</td><td>inspira_veb: 1 week/block</td></tr>
+<tr><td>MANGOLD, MELISSA</td><td>inspira_veb: 1 week/block</td></tr>
+<tr><td>MCMILLAN, TYLER</td><td>inspira_veb: 1 week/block</td></tr>
+<tr><td>PATEL, PARITA</td><td>inspira_mhw: 2 weeks/block</td></tr>
+<tr><td>PODDAR, SAMEER</td><td>cape: 13 weeks, 13 weekends/year</td></tr>
 </tbody></table>
 <h3>split_department <span class="badge badge-warn">2</span></h3>
 <table><thead><tr><th>Provider</th><th>Rule</th></tr></thead><tbody>
