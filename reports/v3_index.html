@@ -171,11 +171,11 @@ a.prov-link:hover { text-decoration: underline; }
 <div id="report-content" class="">
 <div class="container">
 
-<div class="nav"><span class="nav-label">Variations:</span><a href="v3_index.html" class="active">Overview</a><a href="report_seed42.html">Seed 42</a><a href="report_seed7.html">Seed 7</a><a href="report_seed123.html">Seed 123</a><a href="report_seed256.html">Seed 256</a><a href="report_seed999.html">Seed 999</a><a href="v3_inputs.html">Inputs</a></div>
+<div class="nav"><span class="nav-label">Variations:</span><a href="v3_index.html" class="active">Overview</a><a href="report_seed42.html">Seed 42</a><a href="report_seed7.html">Seed 7</a><a href="v3_inputs.html">Inputs</a></div>
 
 <h1>Block 3 Schedule Report — V3 Engine</h1>
 <p class="subtitle">March 02 &ndash; June 28, 2026</p>
-<p class="generated">Generated: 2026-02-21 02:28</p>
+<p class="generated">Generated: 2026-02-21 22:43</p>
 
 <h2>Seed Comparison</h2>
 <p style="color:#666;margin-bottom:12px">Each variation uses a different random seed, producing a different assignment pattern while following the same rules. Click a seed to see its full report.</p>
@@ -202,34 +202,106 @@ a.prov-link:hover { text-decoration: underline; }
 <td>106</td>
 <td>38</td>
 <td><a href="report_seed7.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
-<tr><td><strong>123</strong></td>
-<td><span class="badge badge-short">85.9%</span></td>
-<td><span class="badge badge-short">89.5%</span></td>
-<td><span class="badge badge-short">247</span></td>
-<td>0</td>
-<td>920</td><td>822</td>
-<td>105</td>
-<td>39</td>
-<td><a href="report_seed123.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
-<tr><td><strong>256</strong></td>
-<td><span class="badge badge-short">86.7%</span></td>
-<td><span class="badge badge-short">89.8%</span></td>
-<td><span class="badge badge-short">236</span></td>
-<td>0</td>
-<td>929</td><td>824</td>
-<td>108</td>
-<td>36</td>
-<td><a href="report_seed256.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
-<tr><td><strong>999</strong></td>
-<td><span class="badge badge-short">86.2%</span></td>
-<td><span class="badge badge-short">89.9%</span></td>
-<td><span class="badge badge-short">241</span></td>
-<td>0</td>
-<td>923</td><td>825</td>
-<td>104</td>
-<td>40</td>
-<td><a href="report_seed999.html" style="color:var(--link);font-weight:600">View &rarr;</a></td></tr>
 </tbody></table>
+<style>
+.scorecard-table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 13px; }
+.scorecard-table th, .scorecard-table td { padding: 8px 12px; border: 1px solid #ddd; text-align: center; }
+.scorecard-table th { background: #f5f5f5; font-weight: 700; font-size: 12px; }
+.scorecard-table td.metric-name { text-align: left; font-weight: 600; background: #fafafa; }
+.scorecard-table .ref-col { background: #e8eaf6; font-weight: 600; }
+.scorecard-table .sc-best { background: #e8f5e9; color: #2e7d32; font-weight: 700; }
+.scorecard-table .sc-worst { background: #fce4ec; color: #c62828; }
+.sc-definitions { margin-top: 24px; padding: 16px 20px; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; }
+.sc-definitions h3 { margin: 0 0 12px 0; font-size: 14px; color: #333; }
+.sc-definitions dl { margin: 0; }
+.sc-definitions dt { font-weight: 700; font-size: 13px; color: #1a237e; margin-top: 10px; }
+.sc-definitions dt:first-of-type { margin-top: 0; }
+.sc-definitions dd { margin: 2px 0 0 0; font-size: 12px; color: #555; line-height: 1.5; }
+.sc-definitions .sc-dir { font-weight: 400; font-size: 11px; color: #888; }
+</style>
+<h2>Quality Scorecard</h2>
+<p style="color:#666;margin-bottom:12px">Each metric evaluates schedule quality. The Actual Block 3 column is the reference (human-created schedule). <span class="badge badge-ok">Green</span> = best across seeds, <span class="badge badge-short">Red</span> = worst.</p>
+<table class="scorecard-table"><thead><tr><th>Metric</th>
+<th class="ref-col">Actual Block 3</th>
+<th>Seed 42</th>
+<th>Seed 7</th>
+</tr></thead><tbody>
+<tr><td class="metric-name">Weekday Coverage</td>
+<td class="ref-col">93.8%</td>
+<td class="sc-worst">86.4%</td>
+<td>86.6%</td>
+</tr>
+<tr><td class="metric-name">Weekend Coverage</td>
+<td class="ref-col">93.2%</td>
+<td class="sc-worst">89.7%</td>
+<td>90.2%</td>
+</tr>
+<tr><td class="metric-name">Total Gaps</td>
+<td class="ref-col">122</td>
+<td class="sc-worst">241</td>
+<td>234</td>
+</tr>
+<tr><td class="metric-name">Zero-Gap Violations</td>
+<td class="ref-col">122</td>
+<td class="sc-best">0</td>
+<td class="sc-best">0</td>
+</tr>
+<tr><td class="metric-name">Providers at Target</td>
+<td class="ref-col">88.2%</td>
+<td class="sc-worst">87.5%</td>
+<td class="sc-best">88.9%</td>
+</tr>
+<tr><td class="metric-name">Mean Week Deviation</td>
+<td class="ref-col">0.7wk</td>
+<td>0.6wk</td>
+<td class="sc-best">0.6wk</td>
+</tr>
+<tr><td class="metric-name">Avg Sites/Provider</td>
+<td class="ref-col">1.9</td>
+<td class="sc-worst">2.4</td>
+<td class="sc-worst">2.4</td>
+</tr>
+<tr><td class="metric-name">Max Consecutive</td>
+<td class="ref-col">5</td>
+<td class="sc-worst">12</td>
+<td class="sc-worst">12</td>
+</tr>
+<tr><td class="metric-name">Avg Max Consecutive</td>
+<td class="ref-col">2.4</td>
+<td>8.1</td>
+<td class="sc-worst">8.2</td>
+</tr>
+<tr><td class="metric-name">Fairness (CV)</td>
+<td class="ref-col">24.9%</td>
+<td>17.7%</td>
+<td class="sc-best">16.5%</td>
+</tr>
+</tbody></table>
+<div class="sc-definitions">
+<h3>Metric Definitions</h3>
+<dl>
+<dt>Weekday Coverage <span class="sc-dir">(&uarr; better)</span></dt>
+<dd>Percentage of weekday site-slots filled vs. demanded. Each site has a target number of providers per weekday period; this measures how many of those slots were actually assigned.</dd>
+<dt>Weekend Coverage <span class="sc-dir">(&uarr; better)</span></dt>
+<dd>Same as Weekday Coverage but for weekend periods.</dd>
+<dt>Total Gaps <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Total number of unfilled site-period slots across the entire block. A gap means a site needed a provider for a period and didn't get one.</dd>
+<dt>Zero-Gap Violations <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Gaps at critical (tier-0) sites: Cooper, Vineland, Mullica Hill, and Cape. These sites must be fully staffed every period. The engine treats this as a hard constraint; the actual schedule is evaluated against the same standard.</dd>
+<dt>Providers at Target <span class="sc-dir">(&uarr; better)</span></dt>
+<dd>Percentage of providers whose assigned week count is within &plusmn;1 of their Block 3 target (derived from FTE and prior blocks worked). Measures how well the schedule matches each provider's contractual obligation.</dd>
+<dt>Mean Week Deviation <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Average absolute difference between weeks assigned and weeks owed, across all providers. Lower means providers are closer to their target workload.</dd>
+<dt>Avg Sites/Provider <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Average number of distinct sites each provider is assigned to during the block. Lower means less rotation and more continuity for providers and site teams.</dd>
+<dt>Max Consecutive <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Longest unbroken stretch of consecutive periods (weeks + weekends counted separately) worked by any single provider. A value of 12 means one provider works 6 straight weeks with no break.</dd>
+<dt>Avg Max Consecutive <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Average of the longest consecutive stretch across all providers. Indicates how spread out or clustered assignments are overall.</dd>
+<dt>Fairness (CV) <span class="sc-dir">(&darr; better)</span></dt>
+<dd>Coefficient of variation of the utilization ratio (weeks assigned / weeks target) across providers. Lower means work is distributed more evenly relative to each provider's obligation. 0% would mean everyone is at exactly their target proportion.</dd>
+</dl>
+</div>
 </div>
 </div>
 <script>
